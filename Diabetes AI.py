@@ -6,6 +6,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, f1_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, roc_auc_score
 from sklearn.calibration import CalibratedClassifierCV
@@ -87,18 +88,24 @@ calibrated_model = CalibratedClassifierCV(model, method='sigmoid', cv=5)
 # ==============================
 calibrated_model.fit(X_train, y_train)
 
-# ==============================
-# 9. EVALUATION
-# ==============================
+# EVALUATION
 y_pred = calibrated_model.predict(X_test)
 y_prob = calibrated_model.predict_proba(X_test)[:, 1]
 
 print("\nClassification Report:\n")
 print(classification_report(y_test, y_pred, zero_division=0))
 
+# ROC-AUC
 roc_auc = roc_auc_score(y_test, y_prob)
 print("ROC-AUC Score:", roc_auc)
 
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+print("\nConfusion Matrix:\n", cm)
+
+# F1 Score
+f1 = f1_score(y_test, y_pred, zero_division=0)
+print("F1 Score:", f1)
 # ==============================
 # 10. SAVE MODEL
 # ==============================
