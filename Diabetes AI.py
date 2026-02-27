@@ -140,10 +140,10 @@ def predict_risk(input_data):
 # 12. EXAMPLE TEST
 # ==============================
 example_user = {
-    'HighBP': 0,'HighChol': 1,'BMI': 32,'Smoker': 1,'Stroke': 0,
-    'HeartDiseaseorAttack': 0,'PhysActivity': 0,'Fruits': 0,'Veggies': 0,
-    'HvyAlcoholConsump': 0,'GenHlth': 4,'MentHlth': 10,'PhysHlth': 5,
-    'DiffWalk': 1,'Sex': 1,'Age': 30
+    'HighBP': 0,'HighChol': 0,'BMI': 28,'Smoker': 0,'Stroke': 1,
+    'HeartDiseaseorAttack': 1,'PhysActivity': 0,'Fruits': 1,'Veggies': 1,
+    'HvyAlcoholConsump': 1,'GenHlth': 4,'MentHlth': 10,'PhysHlth': 5,
+    'DiffWalk': 1,'Sex': 1,'Age': 80
 }
 
 risk, level = predict_risk(example_user)
