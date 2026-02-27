@@ -1,0 +1,8 @@
+
+# Project dependencies (pinned to the virtualenv versions)
+pandas
+numpy
+scikit-learn
+joblib
+
+# Install with: pip install -r requirements.txt

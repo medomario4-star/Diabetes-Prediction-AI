@@ -2,5 +2,4 @@
 /shelf/
 /workspace.xml
 # Editor-based HTTP Client requests
-*.pkl
 /httpRequests/
