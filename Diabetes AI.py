@@ -9,8 +9,8 @@ from sklearn.preprocessing import StandardScaler
 # ── Constants ────────────────────────────────────────────────────────────────
 
 CACHE_FILE = "diabetes_risk_model.pkl"
-CSV_FILE   = "Diabetes Health Indicators Dataset export 2026-02-27 17-12-07.csv"
-TEST_SIZE  = 0.2
+CSV_FILE = "Diabetes Health Indicators Dataset export 2026-02-27 17-12-07.csv"
+TEST_SIZE = 0.2
 RANDOM_STATE = 42
 
 # Features selected from the dataset to train on.
@@ -43,6 +43,154 @@ RISK_THRESHOLDS = [
     (101, "Very High Risk"),  # 101 acts as a catch-all upper bound
 ]
 
+# ── Input validation limits ───────────────────────────────────────────────────
+#
+# Each feature entry defines:
+#   "type"    → "binary" | "continuous" | "ordinal"
+#   "allowed" → set of valid values       (binary only)
+#   "min/max" → inclusive numeric bounds  (continuous / ordinal)
+#   "desc"    → human-readable description shown in error messages
+
+FEATURE_LIMITS = {
+    "HighBP": {
+        "type":    "binary",
+        "allowed": {0, 1},
+        "desc":    "High blood pressure flag (0 = No, 1 = Yes)",
+    },
+    "BMI": {
+        "type": "continuous",
+        "min":  10,
+        "max":  100,
+        "desc": "Body Mass Index",
+    },
+    "Smoker": {
+        "type":    "binary",
+        "allowed": {0, 1},
+        "desc":    "Smoked 100+ cigarettes in lifetime (0 = No, 1 = Yes)",
+    },
+    "Stroke": {
+        "type":    "binary",
+        "allowed": {0, 1},
+        "desc":    "Ever had a stroke (0 = No, 1 = Yes)",
+    },
+    "HeartDiseaseorAttack": {
+        "type":    "binary",
+        "allowed": {0, 1},
+        "desc":    "Coronary heart disease or MI (0 = No, 1 = Yes)",
+    },
+    "PhysActivity": {
+        "type":    "binary",
+        "allowed": {0, 1},
+        "desc":    "Physical activity in past 30 days (0 = No, 1 = Yes)",
+    },
+    "Fruits": {
+        "type":    "binary",
+        "allowed": {0, 1},
+        "desc":    "Fruit 1+ times/day (0 = No, 1 = Yes)",
+    },
+    "Veggies": {
+        "type":    "binary",
+        "allowed": {0, 1},
+        "desc":    "Vegetables 1+ times/day (0 = No, 1 = Yes)",
+    },
+    "HvyAlcoholConsump": {
+        "type":    "binary",
+        "allowed": {0, 1},
+        "desc":    "Heavy alcohol consumption (0 = No, 1 = Yes)",
+    },
+    "GenHlth": {
+        "type": "ordinal",
+        "min":  1,
+        "max":  5,
+        "desc": "General health rating (1 = Excellent, 5 = Poor)",
+    },
+    "MentHlth": {
+        "type": "continuous",
+        "min":  0,
+        "max":  30,
+        "desc": "Poor mental health days in past month",
+    },
+    "PhysHlth": {
+        "type": "continuous",
+        "min":  0,
+        "max":  30,
+        "desc": "Poor physical health days in past month",
+    },
+    "DiffWalk": {
+        "type":    "binary",
+        "allowed": {0, 1},
+        "desc":    "Difficulty walking or climbing stairs (0 = No, 1 = Yes)",
+    },
+    "Sex": {
+        "type":    "binary",
+        "allowed": {0, 1},
+        "desc":    "Biological sex (0 = Female, 1 = Male)",
+    },
+    "Age": {
+        "type": "ordinal",
+        "min":  1,
+        "max":  13,
+        "desc": "Age category (1 = 18-24, 13 = 80+)",
+    },
+}
+
+
+# ── Input validation ──────────────────────────────────────────────────────────
+
+def validate_inputs(input_data: dict) -> None:
+    """Validate all feature values against defined limits.
+
+    Collects ALL violations before raising so the caller sees every problem
+    in a single pass — not just the first one encountered.
+
+    Args:
+        input_data: Feature values keyed by feature name.
+
+    Raises:
+        ValueError: If one or more feature values are missing or out of range.
+    """
+    errors = []
+
+    for feature, limits in FEATURE_LIMITS.items():
+        # ── Missing feature ───────────────────────────────────────────────────
+        if feature not in input_data:
+            errors.append(
+                f"  - '{feature}' is missing. Expected: {limits['desc']}"
+            )
+            continue
+
+        value = input_data[feature]
+
+        # ── Type check: must be numeric ───────────────────────────────────────
+        if not isinstance(value, (int, float)):
+            errors.append(
+                f"  - '{feature}' must be a number, got {type(value).__name__!r}."
+            )
+            continue
+
+        # ── Binary features ───────────────────────────────────────────────────
+        if limits["type"] == "binary":
+            if value not in limits["allowed"]:
+                errors.append(
+                    f"  - '{feature}' must be 0 or 1, got {value!r}. "
+                    f"({limits['desc']})"
+                )
+
+        # ── Continuous / ordinal features ─────────────────────────────────────
+        else:
+            if not (limits["min"] <= value <= limits["max"]):
+                errors.append(
+                    f"  - '{feature}' must be between {limits['min']} and "
+                    f"{limits['max']}, got {value!r}. ({limits['desc']})"
+                )
+
+    if errors:
+        raise ValueError(
+            f"Input validation failed ({len(errors)} error(s)):\n"
+            + "\n".join(errors)
+        )
+
+
 # ── Data loading & preprocessing ─────────────────────────────────────────────
 
 def load_and_preprocess(csv_path: str) -> tuple[pd.DataFrame, pd.Series]:
@@ -67,24 +215,25 @@ def load_and_preprocess(csv_path: str) -> tuple[pd.DataFrame, pd.Series]:
 
 def build_model(y_train) -> XGBClassifier:
     """Return a configured (but untrained) XGBoost classifier.
-        scale_pos_weight which is XGBoost's equivalent of class_weight='balanced'
+
+    scale_pos_weight is XGBoost's equivalent of class_weight='balanced'.
     """
     neg = (y_train == 0).sum()
     pos = (y_train == 1).sum()
     return XGBClassifier(
-        n_estimators=100,   # Number of boosting rounds
-        learning_rate=0.1,  # Step size shrinkage to prevent overfitting
-        max_depth=5,        # Maximum depth of each tree
+        n_estimators=100,           # Number of boosting rounds
+        learning_rate=0.1,          # Step size shrinkage to prevent overfitting
+        max_depth=5,                # Maximum depth of each tree
         random_state=RANDOM_STATE,
-        scale_pos_weight=neg/pos,
-        eval_metric="logloss",  # Log-loss for binary classification
+        scale_pos_weight=neg / pos, # Compensate for class imbalance
+        eval_metric="logloss",      # Log-loss for binary classification
     )
 
 
 def evaluate(model: XGBClassifier, X_test_scaled, y_test) -> None:
     """Print key evaluation metrics for the trained model."""
     y_pred = model.predict(X_test_scaled)
-    y_prob = model.predict_proba(X_test_scaled)[:, 1]  # Probability of positive class
+    y_prob = model.predict_proba(X_test_scaled)[:, 1]
 
     print("ROC-AUC Score  :", roc_auc_score(y_test, y_prob))
     print("F1 Score       :", f1_score(y_test, y_pred, average="weighted"))
@@ -151,21 +300,31 @@ def get_risk_label(risk_pct: float) -> str:
 def predict_risk(input_data: dict, bundle: dict) -> tuple[float, str]:
     """Predict diabetes risk from a dictionary of health indicators.
 
+    Runs input validation before any model inference. If any value is
+    missing or outside its defined range, a ValueError is raised with
+    a full list of all violations — the model is never called.
+
     Args:
         input_data: Feature values keyed by feature name.
         bundle:     Model bundle returned by load_model().
 
     Returns:
         (risk_percentage, risk_label) — e.g. (34.7, "Moderate Risk")
+
+    Raises:
+        ValueError: If one or more input values fail validation.
     """
+    # ── Validate all inputs before touching the model ─────────────────────────
+    validate_inputs(input_data)
+
     model, scaler, features = bundle["model"], bundle["scaler"], bundle["features"]
 
     # Build a single-row DataFrame in the exact column order the model expects
-    input_df = pd.DataFrame([input_data])[features]
+    input_df     = pd.DataFrame([input_data])[features]
     input_scaled = scaler.transform(input_df)
 
     # predict_proba returns [[p_negative, p_positive]]; we want p_positive
-    prob = model.predict_proba(input_scaled)[0, 1]
+    prob     = model.predict_proba(input_scaled)[0, 1]
     risk_pct = round(prob * 100, 2)
 
     return risk_pct, get_risk_label(risk_pct)
@@ -177,15 +336,40 @@ if __name__ == "__main__":
     # Load (or train) the model
     bundle = load_model(CACHE_FILE, CSV_FILE)
 
-    # Example: healthy female, aged 25–29
-    example_user = {
-        'HighBP': 1, 'BMI': 38, 'Smoker': 1, 'Stroke': 1,
-        'HeartDiseaseorAttack': 1, 'PhysActivity': 0, 'Fruits': 0, 'Veggies': 0,
-        'HvyAlcoholConsump': 0, 'GenHlth': 5, 'MentHlth': 15, 'PhysHlth': 20,
-        'DiffWalk': 1, 'Sex': 1, 'Age': 10  # Male, 65-69
+    # ── Valid example: high-risk male, aged 65–69 ─────────────────────────────
+    valid_user = {
+        "HighBP": 1, "BMI": 38, "Smoker": 1, "Stroke": 1,
+        "HeartDiseaseorAttack": 1, "PhysActivity": 0, "Fruits": 0, "Veggies": 0,
+        "HvyAlcoholConsump": 0, "GenHlth": 4, "MentHlth": 10, "PhysHlth": 15,
+        "DiffWalk": 1, "Sex": 1, "Age": 10,
     }
-    
-    risk, level = predict_risk(example_user, bundle)
-    print("\nExample User Risk:")
-    print("Risk Score:", risk, "%")
-    print("Risk Level:", level)
+
+    risk, level = predict_risk(valid_user, bundle)
+    print("\nValid User Risk:")
+    print("  Risk Score :", risk, "%")
+    print("  Risk Level :", level)
+
+    # ── Invalid example: demonstrates validation errors ───────────────────────
+    print("\n--- Testing validation with bad inputs ---")
+    invalid_user = {
+        "HighBP": 2,        # binary → must be 0 or 1
+        "BMI": 150,         # continuous → max is 100
+        "Smoker": -1,       # binary → must be 0 or 1
+        "Stroke": 1,
+        "HeartDiseaseorAttack": 1,
+        "PhysActivity": 0,
+        "Fruits": 0,
+        "Veggies": 0,
+        "HvyAlcoholConsump": 0,
+        "GenHlth": 7,       # ordinal → max is 5
+        "MentHlth": 35,     # continuous → max is 30
+        "PhysHlth": 15,
+        "DiffWalk": 1,
+        "Sex": 1,
+        "Age": 0,           # ordinal → min is 1
+    }
+
+    try:
+        predict_risk(invalid_user, bundle)
+    except ValueError as e:
+        print(e)
