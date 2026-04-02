@@ -65,13 +65,18 @@ def load_and_preprocess(csv_path: str) -> tuple[pd.DataFrame, pd.Series]:
 
 # ── Model training ────────────────────────────────────────────────────────────
 
-def build_model() -> XGBClassifier:
-    """Return a configured (but untrained) XGBoost classifier."""
+def build_model(y_train) -> XGBClassifier:
+    """Return a configured (but untrained) XGBoost classifier.
+        scale_pos_weight which is XGBoost's equivalent of class_weight='balanced'
+    """
+    neg = (y_train == 0).sum()
+    pos = (y_train == 1).sum()
     return XGBClassifier(
         n_estimators=100,   # Number of boosting rounds
         learning_rate=0.1,  # Step size shrinkage to prevent overfitting
         max_depth=5,        # Maximum depth of each tree
         random_state=RANDOM_STATE,
+        scale_pos_weight=neg/pos,
         eval_metric="logloss",  # Log-loss for binary classification
     )
 
@@ -105,7 +110,7 @@ def train_and_save_model(csv_path: str, cache_path: str) -> dict:
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled  = scaler.transform(X_test)
 
-    model = build_model()
+    model = build_model(y_train)
     model.fit(X_train_scaled, y_train)
 
     evaluate(model, X_test_scaled, y_test)
@@ -174,12 +179,12 @@ if __name__ == "__main__":
 
     # Example: healthy female, aged 25–29
     example_user = {
-        'HighBP': 1, 'BMI': 27, 'Smoker': 0, 'Stroke': 0,
-        'HeartDiseaseorAttack': 0, 'PhysActivity': 1, 'Fruits': 0, 'Veggies': 1,
-        'HvyAlcoholConsump': 0, 'GenHlth': 3, 'MentHlth': 2, 'PhysHlth': 2,
-        'DiffWalk': 0, 'Sex': 1, 'Age': 6
+        'HighBP': 1, 'BMI': 38, 'Smoker': 1, 'Stroke': 1,
+        'HeartDiseaseorAttack': 1, 'PhysActivity': 0, 'Fruits': 0, 'Veggies': 0,
+        'HvyAlcoholConsump': 0, 'GenHlth': 5, 'MentHlth': 15, 'PhysHlth': 20,
+        'DiffWalk': 1, 'Sex': 1, 'Age': 10  # Male, 65-69
     }
-
+    
     risk, level = predict_risk(example_user, bundle)
     print("\nExample User Risk:")
     print("Risk Score:", risk, "%")
