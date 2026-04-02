@@ -1,152 +1,187 @@
-# ==============================
-# Diabetes Risk Prediction Model
-# CDC BRFSS 2015 Dataset (Binary Risk)
-# ==============================
-
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, f1_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, roc_auc_score
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.utils.class_weight import compute_class_weight
 import joblib
+from xgboost import XGBClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, f1_score, roc_auc_score
+from sklearn.preprocessing import StandardScaler
 
-# ==============================
-# 1. LOAD DATA
-# ==============================
-df = pd.read_csv("Diabetes Health Indicators Dataset export 2026-02-27 17-12-07.csv")
-print("Dataset shape:", df.shape)
+# ── Constants ────────────────────────────────────────────────────────────────
 
-# ==============================
-# 2. FIX TARGET TO BINARY
-# ==============================
-# Convert 2 (diabetes) and 1 (prediabetes) into 1
-df['Diabetes_012'] = df['Diabetes_012'].replace({2:1})
+CACHE_FILE = "diabetes_risk_model.pkl"
+CSV_FILE   = "Diabetes Health Indicators Dataset export 2026-02-27 17-12-07.csv"
+TEST_SIZE  = 0.2
+RANDOM_STATE = 42
 
-# ==============================
-# 3. SELECT FEATURES
-# ==============================
-features = [
-    'HighBP','HighChol','BMI','Smoker','Stroke','HeartDiseaseorAttack',
-    'PhysActivity','Fruits','Veggies','HvyAlcoholConsump','GenHlth',
-    'MentHlth','PhysHlth','DiffWalk','Sex','Age'
+# Features selected from the dataset to train on.
+# These are health indicators collected via survey (CDC BRFSS dataset).
+FEATURES = [
+    "HighBP",               # Has high blood pressure? (0/1)
+    "HighChol",             # Has high cholesterol? (0/1)
+    "BMI",                  # Body Mass Index (continuous)
+    "Smoker",               # Has smoked 100+ cigarettes in lifetime? (0/1)
+    "Stroke",               # Ever had a stroke? (0/1)
+    "HeartDiseaseorAttack", # Has/had coronary heart disease or MI? (0/1)
+    "PhysActivity",         # Physical activity in past 30 days? (0/1)
+    "Fruits",               # Consumes fruit 1+ times/day? (0/1)
+    "Veggies",              # Consumes vegetables 1+ times/day? (0/1)
+    "HvyAlcoholConsump",    # Heavy alcohol consumption? (0/1)
+    "GenHlth",              # General health rating (1=Excellent … 5=Poor)
+    "MentHlth",             # Poor mental health days in past month (0–30)
+    "PhysHlth",             # Poor physical health days in past month (0–30)
+    "DiffWalk",             # Difficulty walking or climbing stairs? (0/1)
+    "Sex",                  # Biological sex (0=Female, 1=Male)
+    "Age",                  # Age category (1=18-24, 2=25-29, … 13=80+)
 ]
-target = 'Diabetes_012'
 
-X = df[features]
-y = df[target]
+TARGET = "Diabetes_012"
 
-# ==============================
-# 4. TRAIN TEST SPLIT (stratified)
-# ==============================
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
+# Risk thresholds for human-readable labels
+RISK_THRESHOLDS = [
+    (20,  "Low Risk"),
+    (50,  "Moderate Risk"),
+    (75,  "High Risk"),
+    (101, "Very High Risk"),  # 101 acts as a catch-all upper bound
+]
 
-# ==============================
-# 5. HANDLE CLASS IMBALANCE
-# ==============================
-class_weights = compute_class_weight(
-    class_weight='balanced',
-    classes=np.unique(y_train),
-    y=y_train
-)
-class_weight_dict = {0: class_weights[0], 1: class_weights[1]}
+# ── Data loading & preprocessing ─────────────────────────────────────────────
 
-# ==============================
-# 6. BUILD MODEL PIPELINE
-# ==============================
-numeric_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='median')),
-    ('scaler', StandardScaler())
-])
+def load_and_preprocess(csv_path: str) -> tuple[pd.DataFrame, pd.Series]:
+    """Load the CSV, fill missing values, and binarise the target column.
 
-preprocessor = ColumnTransformer(
-    transformers=[('num', numeric_transformer, features)]
-)
-
-base_model = RandomForestClassifier(
-    n_estimators=200, max_depth=10,
-    random_state=42, class_weight=class_weight_dict
-)
-
-model = Pipeline(steps=[('preprocessor', preprocessor), ('classifier', base_model)])
-
-# ==============================
-# 7. CALIBRATE MODEL
-# ==============================
-calibrated_model = CalibratedClassifierCV(model, method='sigmoid', cv=5)
-
-# ==============================
-# 8. TRAIN
-# ==============================
-calibrated_model.fit(X_train, y_train)
-
-# EVALUATION
-y_pred = calibrated_model.predict(X_test)
-y_prob = calibrated_model.predict_proba(X_test)[:, 1]
-
-print("\nClassification Report:\n")
-print(classification_report(y_test, y_pred, zero_division=0))
-
-# ROC-AUC
-roc_auc = roc_auc_score(y_test, y_prob)
-print("ROC-AUC Score:", roc_auc)
-
-# Confusion Matrix
-cm = confusion_matrix(y_test, y_pred)
-print("\nConfusion Matrix:\n", cm)
-
-# F1 Score
-f1 = f1_score(y_test, y_pred, zero_division=0)
-print("F1 Score:", f1)
-# ==============================
-# 10. SAVE MODEL
-# ==============================
-joblib.dump(calibrated_model, "diabetes_risk_model.pkl")
-print("\nModel saved as diabetes_risk_model.pkl")
-
-# ==============================
-# 11. RISK SCORE FUNCTION
-# ==============================
-def predict_risk(input_data):
+    The original target has three classes (0=no diabetes, 1=pre-diabetes,
+    2=diabetes). We collapse pre-diabetes and diabetes into a single
+    positive class so this becomes a binary classification problem.
     """
-    input_data: dictionary with same features as 'features' list
-    Returns risk percentage (0-100) and risk level
+    df = pd.read_csv(csv_path)
+
+    # Replace missing values with column means (simple imputation)
+    df.fillna(df.mean(), inplace=True)
+
+    # Merge class 2 (diabetes) into class 1 (pre-diabetes) → binary target
+    df[TARGET] = df[TARGET].replace({2: 1})
+
+    return df[FEATURES], df[TARGET]
+
+
+# ── Model training ────────────────────────────────────────────────────────────
+
+def build_model() -> XGBClassifier:
+    """Return a configured (but untrained) XGBoost classifier."""
+    return XGBClassifier(
+        n_estimators=100,   # Number of boosting rounds
+        learning_rate=0.1,  # Step size shrinkage to prevent overfitting
+        max_depth=5,        # Maximum depth of each tree
+        random_state=RANDOM_STATE,
+        eval_metric="logloss",  # Log-loss for binary classification
+    )
+
+
+def evaluate(model: XGBClassifier, X_test_scaled, y_test) -> None:
+    """Print key evaluation metrics for the trained model."""
+    y_pred = model.predict(X_test_scaled)
+    y_prob = model.predict_proba(X_test_scaled)[:, 1]  # Probability of positive class
+
+    print("ROC-AUC Score  :", roc_auc_score(y_test, y_prob))
+    print("F1 Score       :", f1_score(y_test, y_pred, average="weighted"))
+    print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+
+
+def train_and_save_model(csv_path: str, cache_path: str) -> dict:
+    """Train the model from scratch and persist it to disk.
+
+    Returns the model bundle (model, scaler, feature list) so the
+    caller doesn't have to re-load from disk immediately.
     """
-    input_df = pd.DataFrame([input_data])
-    input_df = input_df[features]  # Ensure correct order
-    prob = calibrated_model.predict_proba(input_df)[:, 1][0]
-    risk_percentage = prob * 100
+    X, y = load_and_preprocess(csv_path)
 
-    if risk_percentage < 20:
-        level = "Low Risk"
-    elif risk_percentage < 50:
-        level = "Moderate Risk"
-    elif risk_percentage < 75:
-        level = "High Risk"
-    else:
-        level = "Very High Risk"
+    # Stratified split preserves the class ratio in both train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
+    )
 
-    return round(risk_percentage, 2), level
+    # Standardise features to zero mean, unit variance.
+    # Fit ONLY on training data to avoid data leakage into the test set.
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled  = scaler.transform(X_test)
 
-# ==============================
-# 12. EXAMPLE TEST
-# ==============================
-example_user = {
-    'HighBP': 0,'HighChol': 0,'BMI': 28,'Smoker': 0,'Stroke': 1,
-    'HeartDiseaseorAttack': 1,'PhysActivity': 0,'Fruits': 1,'Veggies': 1,
-    'HvyAlcoholConsump': 1,'GenHlth': 4,'MentHlth': 10,'PhysHlth': 5,
-    'DiffWalk': 1,'Sex': 1,'Age': 80
-}
+    model = build_model()
+    model.fit(X_train_scaled, y_train)
 
-risk, level = predict_risk(example_user)
-print("\nExample User Risk:")
-print("Risk Score:", risk, "%")
-print("Risk Level:", level)
+    evaluate(model, X_test_scaled, y_test)
+
+    # Bundle everything the predictor needs at inference time
+    model_bundle = {"model": model, "scaler": scaler, "features": FEATURES}
+    joblib.dump(model_bundle, cache_path)
+    print(f"\nModel saved to {cache_path}")
+
+    return model_bundle
+
+
+# ── Model loading ─────────────────────────────────────────────────────────────
+
+def load_model(cache_path: str, csv_path: str) -> dict:
+    """Load the model bundle from cache, training first if no cache exists."""
+    try:
+        print("Loading model from cache…")
+        bundle = joblib.load(cache_path)
+        print("Model loaded from cache.")
+    except FileNotFoundError:
+        print("No cache found — training model…")
+        bundle = train_and_save_model(csv_path, cache_path)
+        print("Model loaded after training.")
+
+    return bundle
+
+
+# ── Inference ─────────────────────────────────────────────────────────────────
+
+def get_risk_label(risk_pct: float) -> str:
+    """Map a risk percentage to a human-readable label."""
+    for threshold, label in RISK_THRESHOLDS:
+        if risk_pct < threshold:
+            return label
+
+
+def predict_risk(input_data: dict, bundle: dict) -> tuple[float, str]:
+    """Predict diabetes risk from a dictionary of health indicators.
+
+    Args:
+        input_data: Feature values keyed by feature name.
+        bundle:     Model bundle returned by load_model().
+
+    Returns:
+        (risk_percentage, risk_label) — e.g. (34.7, "Moderate Risk")
+    """
+    model, scaler, features = bundle["model"], bundle["scaler"], bundle["features"]
+
+    # Build a single-row DataFrame in the exact column order the model expects
+    input_df = pd.DataFrame([input_data])[features]
+    input_scaled = scaler.transform(input_df)
+
+    # predict_proba returns [[p_negative, p_positive]]; we want p_positive
+    prob = model.predict_proba(input_scaled)[0, 1]
+    risk_pct = round(prob * 100, 2)
+
+    return risk_pct, get_risk_label(risk_pct)
+
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    # Load (or train) the model
+    bundle = load_model(CACHE_FILE, CSV_FILE)
+
+    # Example: healthy female, aged 25–29
+    example_user = {
+        "HighBP": 0, "HighChol": 0, "BMI": 22, "Smoker": 0, "Stroke": 0,
+        "HeartDiseaseorAttack": 0, "PhysActivity": 1, "Fruits": 1, "Veggies": 1,
+        "HvyAlcoholConsump": 0, "GenHlth": 1, "MentHlth": 0, "PhysHlth": 0,
+        "DiffWalk": 0, "Sex": 0, "Age": 2,
+    }
+
+    risk, level = predict_risk(example_user, bundle)
+    print("\nExample User Risk:")
+    print("Risk Score:", risk, "%")
+    print("Risk Level:", level)
