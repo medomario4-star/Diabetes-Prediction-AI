@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Diabetes Risk Assessment</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ── Design tokens ─────────────────────────────────────────────── */
+:root {
+  --white:      #ffffff;
+  --gray-50:    #f8f9fa;
+  --gray-100:   #f1f3f5;
+  --gray-200:   #e9ecef;
+  --gray-300:   #dee2e6;
+  --gray-400:   #ced4da;
+  --gray-500:   #adb5bd;
+  --gray-600:   #6c757d;
+  --gray-700:   #495057;
+  --gray-800:   #343a40;
+  --gray-900:   #212529;
+  --blue:       #2563eb;
+  --blue-light: #eff6ff;
+  --blue-mid:   #bfdbfe;
+  --green:      #16a34a;
+  --green-light:#f0fdf4;
+  --amber:      #d97706;
+  --amber-light:#fffbeb;
+  --orange:     #ea580c;
+  --orange-light:#fff7ed;
+  --red:        #dc2626;
+  --red-light:  #fef2f2;
+  --radius-sm:  6px;
+  --radius:     10px;
+  --radius-lg:  16px;
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow:     0 4px 16px rgba(0,0,0,.07), 0 1px 4px rgba(0,0,0,.04);
+  --shadow-lg:  0 12px 40px rgba(0,0,0,.10), 0 2px 8px rgba(0,0,0,.05);
+  --transition: .18s ease;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--gray-800);
+  background: var(--gray-50);
+  min-height: 100vh;
+}
+
+/* ── Page layout ───────────────────────────────────────────────── */
+.page {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+/* ── Header ────────────────────────────────────────────────────── */
+.header {
+  margin-bottom: 40px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--gray-200);
+  animation: fadeUp .5s ease both;
+}
+.header-eyebrow {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+}
+.eyebrow-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--blue);
+}
+.eyebrow-text {
+  font-size: 11px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--blue);
+}
+.header h1 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 2.2rem;
+  font-weight: 400;
+  color: var(--gray-900);
+  line-height: 1.15;
+  letter-spacing: -.01em;
+}
+.header h1 em {
+  font-style: italic;
+  color: var(--gray-600);
+}
+.header-desc {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--gray-600);
+  max-width: 500px;
+  font-weight: 400;
+}
+
+/* ── Section card ──────────────────────────────────────────────── */
+.card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+  overflow: hidden;
+  animation: fadeUp .4s ease both;
+}
+.card-header {
+  padding: 18px 24px 16px;
+  border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: center; gap: 10px;
+}
+.card-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--blue-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+}
+.card-title {
+  font-size: 13px; font-weight: 600;
+  color: var(--gray-700); letter-spacing: .01em;
+}
+.card-body { padding: 20px 24px; }
+
+/* ── Field rows ────────────────────────────────────────────────── */
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.field-row:last-child { margin-bottom: 0; }
+.field-row.single { grid-template-columns: 1fr; }
+.field-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ── Field ─────────────────────────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-size: 12px; font-weight: 600;
+  color: var(--gray-700); letter-spacing: .01em;
+}
+.field-hint {
+  font-size: 11px; color: var(--gray-500);
+  margin-top: -4px; margin-bottom: 2px;
+}
+
+/* Number input */
+.num-input {
+  width: 100%; height: 38px; padding: 0 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-family: 'Geist', sans-serif;
+  font-size: 14px; color: var(--gray-800);
+  background: var(--white);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  -moz-appearance: textfield;
+}
+.num-input::-webkit-inner-spin-button,
+.num-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.num-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+}
+.num-input.invalid {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(220,38,38,.08);
+}
+.num-input.valid { border-color: #86efac; }
+
+/* Toggle */
+.toggle-field {
+  display: flex; align-items: center;
+  height: 38px; gap: 10px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+  user-select: none;
+}
+.toggle-field:hover { background: var(--gray-100); }
+.toggle-field.on {
+  background: var(--blue-light);
+  border-color: var(--blue-mid);
+}
+.toggle-switch {
+  position: relative; width: 32px; height: 18px; flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  position: absolute; inset: 0;
+  background: var(--gray-300); border-radius: 9px;
+  transition: background var(--transition);
+}
+.toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition);
+}
+.toggle-switch input:checked ~ .toggle-track { background: var(--blue); }
+.toggle-switch input:checked ~ .toggle-thumb { transform: translateX(14px); }
+.toggle-label {
+  font-size: 13px; color: var(--gray-600);
+  transition: color var(--transition); flex: 1;
+}
+.toggle-field.on .toggle-label { color: var(--blue); font-weight: 500; }
+.toggle-value {
+  font-size: 12px; font-weight: 600;
+  color: var(--gray-400);
+  transition: color var(--transition);
+  min-width: 22px; text-align: right;
+}
+.toggle-field.on .toggle-value { color: var(--blue); }
+
+/* Segmented control */
+.seg-control {
+  display: flex; border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm); overflow: hidden;
+  height: 38px;
+}
+.seg-btn {
+  flex: 1; border: none; border-right: 1px solid var(--gray-300);
+  background: var(--white); color: var(--gray-600);
+  font-family: 'Geist', sans-serif;
+  font-size: 12px; font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.seg-btn:last-child { border-right: none; }
+.seg-btn:hover:not(.active) { background: var(--gray-50); color: var(--gray-800); }
+.seg-btn.active {
+  background: var(--blue); color: var(--white); font-weight: 600;
+}
+
+/* Age segmented — scrollable row */
+.age-control {
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+.age-btn {
+  padding: 0 10px; height: 32px; border-radius: 4px;
+  border: 1px solid var(--gray-300);
+  background: var(--white); color: var(--gray-600);
+  font-family: 'Geist', sans-serif;
+  font-size: 11px; font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.age-btn:hover:not(.active) { background: var(--gray-50); border-color: var(--gray-400); }
+.age-btn.active {
+  background: var(--blue); color: var(--white);
+  border-color: var(--blue); font-weight: 600;
+}
+
+/* ── Action row ────────────────────────────────────────────────── */
+.action-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 24px;
+  animation: fadeUp .5s .2s ease both;
+}
+.btn-primary {
+  padding: 0 28px; height: 42px;
+  background: var(--blue); color: var(--white);
+  font-family: 'Geist', sans-serif;
+  font-size: 13px; font-weight: 600;
+  border: none; border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+  display: flex; align-items: center; gap: 8px;
+}
+.btn-primary:hover {
+  background: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(37,99,235,.35);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled {
+  background: var(--gray-300); color: var(--gray-500);
+  cursor: not-allowed; box-shadow: none; transform: none;
+}
+.btn-secondary {
+  padding: 0 20px; height: 42px;
+  background: transparent; color: var(--gray-600);
+  font-family: 'Geist', sans-serif;
+  font-size: 13px; font-weight: 500;
+  border: 1px solid var(--gray-300); border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-secondary:hover { border-color: var(--gray-400); color: var(--gray-800); background: var(--gray-50); }
+
+/* ── Error banner ──────────────────────────────────────────────── */
+.error-banner {
+  display: none;
+  background: var(--red-light);
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 13px; color: #991b1b;
+  line-height: 1.6; white-space: pre-wrap;
+  animation: fadeUp .25s ease both;
+}
+.error-banner.show { display: block; }
+
+/* ── Result card ───────────────────────────────────────────────── */
+.result-card {
+  display: none;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-top: 24px;
+  animation: fadeUp .4s ease both;
+}
+.result-card.show { display: block; }
+.result-top {
+  padding: 28px 32px 24px;
+  border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+}
+.result-score-wrap {}
+.result-label-sm {
+  font-size: 11px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--gray-500);
+  margin-bottom: 6px;
+}
+.result-score {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 4rem; line-height: 1;
+  color: var(--gray-900); letter-spacing: -.02em;
+}
+.result-score .pct { font-size: 1.6rem; color: var(--gray-400); margin-left: 2px; }
+.result-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 10px; padding: 5px 14px;
+  border-radius: 20px; font-size: 12px; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.badge-low      { background: var(--green-light); color: var(--green);  border: 1px solid #bbf7d0; }
+.badge-moderate { background: var(--amber-light); color: var(--amber);  border: 1px solid #fde68a; }
+.badge-high     { background: var(--orange-light);color: var(--orange); border: 1px solid #fed7aa; }
+.badge-veryhigh { background: var(--red-light);   color: var(--red);    border: 1px solid #fecaca; }
+
+/* Gauge */
+.result-gauge {
+  flex-shrink: 0; width: 100px; height: 100px;
+  position: relative;
+}
+.gauge-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.gauge-bg { fill: none; stroke: var(--gray-100); stroke-width: 8; }
+.gauge-fill {
+  fill: none; stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 251.2;
+  stroke-dashoffset: 251.2;
+  transition: stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1), stroke .6s ease;
+}
+.gauge-text {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.gauge-pct {
+  font-size: 18px; font-weight: 600; color: var(--gray-800); line-height: 1;
+}
+.gauge-lbl { font-size: 9px; color: var(--gray-500); text-transform: uppercase; letter-spacing: .05em; }
+
+.result-bottom { padding: 20px 32px; }
+.result-scale {
+  display: flex; gap: 4px; margin-bottom: 8px;
+}
+.scale-seg {
+  flex: 1; height: 5px; border-radius: 3px;
+}
+.scale-labels {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--gray-400); letter-spacing: .03em;
+}
+
+/* ── Spinner ───────────────────────────────────────────────────── */
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: var(--white);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Footer / Disclaimer ────────────────────────────────────────── */
+.footer {
+  margin-top: 40px;
+}
+.disclaimer {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid var(--amber);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.disclaimer-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.disclaimer-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 8px;
+  letter-spacing: .01em;
+}
+.disclaimer-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.disclaimer-list li {
+  font-size: 13px;
+  color: #78350f;
+  line-height: 1.55;
+  padding-left: 16px;
+  position: relative;
+}
+.disclaimer-list li::before {
+  content: '–';
+  position: absolute;
+  left: 0;
+  color: var(--amber);
+  font-weight: 600;
+}
+
+/* ── Animations ────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card:nth-child(1) { animation-delay: .05s }
+.card:nth-child(2) { animation-delay: .10s }
+.card:nth-child(3) { animation-delay: .15s }
+.card:nth-child(4) { animation-delay: .20s }
+.card:nth-child(5) { animation-delay: .25s }
+
+/* ── Responsive ────────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .field-row        { grid-template-columns: 1fr; }
+  .field-row.triple { grid-template-columns: 1fr 1fr; }
+  .result-top       { flex-direction: column; }
+  .result-gauge     { width: 80px; height: 80px; }
+  .result-score     { font-size: 3rem; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-eyebrow">
+      <div class="eyebrow-dot"></div>
+      <span class="eyebrow-text">Clinical Risk Assessment</span>
+    </div>
+    <h1>Diabetes Risk <em>Predictor</em></h1>
+    <p class="header-desc">
+      Enter your health indicators below. The model will estimate your likelihood
+      of diabetes using a trained XGBoost classifier based on CDC BRFSS survey data.
+    </p>
+  </header>
+
+  <!-- Error banner -->
+  <div class="error-banner" id="error-banner"></div>
+
+  <form id="risk-form" novalidate>
+
+    <!-- Card 1: Vitals -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">♥</div>
+        <span class="card-title">Vitals & Physical Health</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">BMI</label>
+            <span class="field-hint">Body Mass Index — valid range: 10 to 100</span>
+            <input class="num-input" type="number" data-key="BMI" min="10" max="100" step="0.1" placeholder="e.g. 24.5"/>
+          </div>
+          <div class="field">
+            <label class="field-label">General Health</label>
+            <span class="field-hint">Self-rated overall health</span>
+            <div class="seg-control" data-key="GenHlth">
+              <button type="button" class="seg-btn" data-val="1">Excellent</button>
+              <button type="button" class="seg-btn" data-val="2">Very Good</button>
+              <button type="button" class="seg-btn" data-val="3">Good</button>
+              <button type="button" class="seg-btn" data-val="4">Fair</button>
+              <button type="button" class="seg-btn" data-val="5">Poor</button>
+            </div>
+          </div>
+        </div>
+        <div class="field-row triple">
+          <div class="field">
+            <label class="field-label">High Blood Pressure</label>
+            <div class="toggle-field" data-key="HighBP">
+              <span class="toggle-switch">
+                <input type="checkbox" data-key="HighBP"/>
+                <span class="toggle-track"></span>
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">High BP</span>
+              <span class="toggle-value">No</span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Difficulty Walking</label>
+            <div class="toggle-field" data-key="DiffWalk">
+              <span class="toggle-switch">
+                <input type="checkbox" data-key="DiffWalk"/>
+                <span class="toggle-track"></span>
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">Difficulty</span>
+              <span class="toggle-value">No</span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Physical Activity</label>
+            <div class="toggle-field" data-key="PhysActivity">
+              <span class="toggle-switch">
+                <input type="checkbox" data-key="PhysActivity"/>
+                <span class="toggle-track"></span>
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">Active</span>
+              <span class="toggle-value">No</span>
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Poor Mental Health Days</label>
+            <span class="field-hint">Days in past month — 0 to 30</span>
+            <input class="num-input" type="number" data-key="MentHlth" min="0" max="30" step="1" placeholder="e.g. 3"/>
+          </div>
+          <div class="field">
+            <label class="field-label">Poor Physical Health Days</label>
+            <span class="field-hint">Days in past month — 0 to 30</span>
+            <input class="num-input" type="number" data-key="PhysHlth" min="0" max="30" step="1" placeholder="e.g. 2"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Medical History -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🩺</div>
+        <span class="card-title">Medical History</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Stroke History</label>
+            <div class="toggle-field" data-key="Stroke">
+              <span class="toggle-switch">
+                <input type="checkbox" data-key="Stroke"/>
+                <span class="toggle-track"></span>
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">Had a stroke</span>
+              <span class="toggle-value">No</span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Heart Disease or Attack</label>
+            <div class="toggle-field" data-key="HeartDiseaseorAttack">
+              <span class="toggle-switch">
+                <input type="checkbox" data-key="HeartDiseaseorAttack"/>
+                <span class="toggle-track"></span>
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">Heart condition</span>
+              <span class="toggle-value">No</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Lifestyle -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🥗</div>
+        <span class="card-title">Lifestyle</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row triple">
+          <div class="field">
+            <label class="field-label">Smoker</label>
+            <div class="toggle-field" data-key="Smoker">
+              <span class="toggle-switch">
+                <input type="checkbox" data-key="Smoker"/>
+                <span class="toggle-track"></span>
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">100+ cigarettes</span>
+              <span class="toggle-value">No</span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Heavy Alcohol Use</label>
+            <div class="toggle-field" data-key="HvyAlcoholConsump">
+              <span class="toggle-switch">
+                <input type="checkbox" data-key="HvyAlcoholConsump"/>
+                <span class="toggle-track"></span>
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">Heavy drinker</span>
+              <span class="toggle-value">No</span>
+            </div>
+          </div>
+          <div class="field"></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Fruit Intake</label>
+            <div class="toggle-field" data-key="Fruits">
+              <span class="toggle-switch">
+                <input type="checkbox" data-key="Fruits"/>
+                <span class="toggle-track"></span>
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">Fruit 1+ times/day</span>
+              <span class="toggle-value">No</span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Vegetable Intake</label>
+            <div class="toggle-field" data-key="Veggies">
+              <span class="toggle-switch">
+                <input type="checkbox" data-key="Veggies"/>
+                <span class="toggle-track"></span>
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">Vegetables 1+ times/day</span>
+              <span class="toggle-value">No</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: Demographics -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">👤</div>
+        <span class="card-title">Demographics</span>
+      </div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Biological Sex</label>
+            <div class="seg-control" data-key="Sex">
+              <button type="button" class="seg-btn" data-val="0">Female</button>
+              <button type="button" class="seg-btn" data-val="1">Male</button>
+            </div>
+          </div>
+        </div>
+        <div class="field-row single">
+          <div class="field">
+            <label class="field-label">Age Group</label>
+            <span class="field-hint">Select your age range</span>
+            <div class="age-control" data-key="Age">
+              <button type="button" class="age-btn" data-val="1">18–24</button>
+              <button type="button" class="age-btn" data-val="2">25–29</button>
+              <button type="button" class="age-btn" data-val="3">30–34</button>
+              <button type="button" class="age-btn" data-val="4">35–39</button>
+              <button type="button" class="age-btn" data-val="5">40–44</button>
+              <button type="button" class="age-btn" data-val="6">45–49</button>
+              <button type="button" class="age-btn" data-val="7">50–54</button>
+              <button type="button" class="age-btn" data-val="8">55–59</button>
+              <button type="button" class="age-btn" data-val="9">60–64</button>
+              <button type="button" class="age-btn" data-val="10">65–69</button>
+              <button type="button" class="age-btn" data-val="11">70–74</button>
+              <button type="button" class="age-btn" data-val="12">75–79</button>
+              <button type="button" class="age-btn" data-val="13">80+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-row">
+      <button type="submit" class="btn-primary" id="submit-btn">
+        Calculate Risk
+      </button>
+      <button type="button" class="btn-secondary" id="reset-btn">Reset form</button>
+    </div>
+
+  </form>
+
+  <!-- Result -->
+  <div class="result-card" id="result-card">
+    <div class="result-top">
+      <div class="result-score-wrap">
+        <div class="result-label-sm">Estimated Risk Score</div>
+        <div class="result-score" id="score-display">0<span class="pct">%</span></div>
+        <div id="result-badge" class="result-badge">—</div>
+      </div>
+      <div class="result-gauge">
+        <svg class="gauge-svg" viewBox="0 0 90 90">
+          <circle class="gauge-bg" cx="45" cy="45" r="40"/>
+          <circle class="gauge-fill" id="gauge-fill" cx="45" cy="45" r="40"/>
+        </svg>
+        <div class="gauge-text">
+          <span class="gauge-pct" id="gauge-pct">0%</span>
+          <span class="gauge-lbl">Risk</span>
+        </div>
+      </div>
+    </div>
+    <div class="result-bottom">
+      <div class="result-scale">
+        <div class="scale-seg" style="background:#bbf7d0"></div>
+        <div class="scale-seg" style="background:#fde68a"></div>
+        <div class="scale-seg" style="background:#fed7aa"></div>
+        <div class="scale-seg" style="background:#fecaca"></div>
+      </div>
+      <div class="scale-labels">
+        <span>Low (0–20%)</span>
+        <span>Moderate (20–50%)</span>
+        <span>High (50–75%)</span>
+        <span>Very High (75%+)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Disclaimer -->
+  <footer class="footer">
+    <div class="disclaimer">
+      <div class="disclaimer-icon">⚠️</div>
+      <div class="disclaimer-body">
+        <div class="disclaimer-title">Important Disclaimer — Please Read</div>
+        <ul class="disclaimer-list">
+          <li>This tool is intended <strong>for educational purposes only</strong> and does not constitute medical advice, diagnosis, or treatment.</li>
+          <li>The underlying model has an approximate <strong>accuracy of 75%</strong>, meaning it may produce incorrect results in 1 out of every 4 cases.</li>
+          <li>A high or low risk score does <strong>not</strong> confirm or rule out a diabetes diagnosis.</li>
+          <li>Always consult a <strong>qualified healthcare provider</strong> for any medical concerns or before making health-related decisions.</li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const BINARY_KEYS = ['HighBP','Smoker','Stroke','HeartDiseaseorAttack',
+                     'PhysActivity','Fruits','Veggies','HvyAlcoholConsump',
+                     'DiffWalk'];
+const NUM_KEYS    = { BMI: [10,100], MentHlth: [0,30], PhysHlth: [0,30] };
+const SEG_KEYS    = ['GenHlth','Sex','Age'];
+
+const state = {};
+BINARY_KEYS.forEach(k => state[k] = 0);
+SEG_KEYS.forEach(k => state[k] = null);
+Object.keys(NUM_KEYS).forEach(k => state[k] = null);
+
+// ── Toggle interaction ────────────────────────────────────────────────────────
+document.querySelectorAll('.toggle-field').forEach(wrap => {
+  const cb  = wrap.querySelector('input[type="checkbox"]');
+  const lbl = wrap.querySelector('.toggle-value');
+  const key = wrap.dataset.key;
+
+  const update = () => {
+    const on = cb.checked;
+    state[key] = on ? 1 : 0;
+    lbl.textContent = on ? 'Yes' : 'No';
+    wrap.classList.toggle('on', on);
+  };
+
+  // clicking anywhere on the row toggles the checkbox
+  wrap.addEventListener('click', e => {
+    if (e.target !== cb) cb.checked = !cb.checked;
+    update();
+  });
+  cb.addEventListener('change', update);
+});
+
+// ── Segmented controls ────────────────────────────────────────────────────────
+document.querySelectorAll('.seg-control, .age-control').forEach(ctrl => {
+  const key = ctrl.dataset.key;
+  ctrl.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      ctrl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state[key] = Number(btn.dataset.val);
+    });
+  });
+});
+
+// ── Number inputs ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.num-input').forEach(inp => {
+  const key = inp.dataset.key;
+  const [mn, mx] = NUM_KEYS[key];
+  inp.addEventListener('input', () => {
+    const v = parseFloat(inp.value);
+    if (inp.value === '' || isNaN(v) || v < mn || v > mx) {
+      state[key] = null;
+      inp.classList.toggle('invalid', inp.value !== '');
+      inp.classList.remove('valid');
+    } else {
+      state[key] = v;
+      inp.classList.remove('invalid');
+      inp.classList.add('valid');
+    }
+  });
+});
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+document.getElementById('risk-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  clearError(); hideResult();
+
+  const missing = Object.entries(state)
+    .filter(([,v]) => v === null)
+    .map(([k]) => k);
+
+  if (missing.length) {
+    showError(`Please complete the following fields: ${missing.join(', ')}`);
+    // highlight empty number inputs
+    document.querySelectorAll('.num-input').forEach(inp => {
+      if (state[inp.dataset.key] === null && inp.value === '')
+        inp.classList.add('invalid');
+    });
+    return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analysing…';
+
+  try {
+    const res  = await fetch('http://localhost:5000/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state),
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error || 'Server error.'); return; }
+    showResult(data.risk, data.level);
+  } catch {
+    showError('Could not reach the server.\nMake sure the Flask backend is running on port 5000.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Calculate Risk';
+  }
+});
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+document.getElementById('reset-btn').addEventListener('click', () => {
+  BINARY_KEYS.forEach(k => { state[k] = 0; });
+  SEG_KEYS.forEach(k => { state[k] = null; });
+  Object.keys(NUM_KEYS).forEach(k => { state[k] = null; });
+
+  document.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+  document.querySelectorAll('.toggle-field').forEach(w => {
+    w.classList.remove('on');
+    w.querySelector('.toggle-value').textContent = 'No';
+  });
+  document.querySelectorAll('.seg-btn, .age-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.num-input').forEach(inp => {
+    inp.value = '';
+    inp.classList.remove('valid','invalid');
+  });
+  clearError(); hideResult();
+});
+
+// ── Result rendering ──────────────────────────────────────────────────────────
+function showResult(risk, level) {
+  const card   = document.getElementById('result-card');
+  const scoreEl= document.getElementById('score-display');
+  const badge  = document.getElementById('result-badge');
+  const gaugeFill = document.getElementById('gauge-fill');
+  const gaugePct  = document.getElementById('gauge-pct');
+
+  card.classList.add('show');
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Animate score counter
+  const dur = 900; const start = performance.now();
+  (function tick(now) {
+    const t = Math.min((now - start) / dur, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    const cur = (risk * ease).toFixed(1);
+    scoreEl.innerHTML = `${cur}<span class="pct">%</span>`;
+    gaugePct.textContent = Math.round(risk * ease) + '%';
+    if (t < 1) requestAnimationFrame(tick);
+    else {
+      scoreEl.innerHTML = `${risk}<span class="pct">%</span>`;
+      gaugePct.textContent = risk + '%';
+    }
+  })(start);
+
+  // Gauge arc (circumference = 2π×40 ≈ 251.2)
+  const pct    = Math.min(risk / 100, 1);
+  const offset = 251.2 * (1 - pct);
+  setTimeout(() => {
+    gaugeFill.style.strokeDashoffset = offset;
+    gaugeFill.style.stroke = gaugeColor(risk);
+  }, 60);
+
+  // Badge
+  badge.textContent = level;
+  badge.className   = 'result-badge ' + badgeClass(level);
+}
+
+function gaugeColor(r) {
+  if (r < 20) return '#16a34a';
+  if (r < 50) return '#d97706';
+  if (r < 75) return '#ea580c';
+  return '#dc2626';
+}
+function badgeClass(level) {
+  return { 'Low Risk':'badge-low','Moderate Risk':'badge-moderate',
+           'High Risk':'badge-high','Very High Risk':'badge-veryhigh' }[level] || '';
+}
+
+function hideResult() {
+  document.getElementById('result-card').classList.remove('show');
+}
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg; el.classList.add('show');
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function clearError() {
+  const el = document.getElementById('error-banner');
+  el.textContent = ''; el.classList.remove('show');
+}
+</script>
+</body>
+</html>
