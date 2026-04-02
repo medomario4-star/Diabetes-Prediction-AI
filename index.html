@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Diabetes Risk Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:        #0a0f0d;
+    --surface:   #111812;
+    --card:      #161e18;
+    --border:    #1f2e22;
+    --accent:    #2dff7a;
+    --accent2:   #00c857;
+    --warn:      #ffb347;
+    --danger:    #ff4d4d;
+    --text:      #e8f0ea;
+    --muted:     #6b7d6e;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --radius:    12px;
+    --transition: 0.22s cubic-bezier(.4,0,.2,1);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Background grid ─────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(45,255,122,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(45,255,122,.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Layout ──────────────────────────────────── */
+  .shell {
+    position: relative; z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* ── Header ──────────────────────────────────── */
+  header {
+    margin-bottom: 52px;
+    animation: fadeUp .6s ease both;
+  }
+  .logo-line {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .logo-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 14px var(--accent);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: .5; transform: scale(.7); }
+  }
+  .logo-label {
+    font-family: var(--font-head);
+    font-size: 11px; font-weight: 600; letter-spacing: .15em;
+    color: var(--accent); text-transform: uppercase;
+  }
+  h1 {
+    font-family: var(--font-head);
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800; line-height: 1.1;
+    letter-spacing: -.02em;
+    color: var(--text);
+  }
+  h1 span { color: var(--accent); }
+  .subtitle {
+    margin-top: 14px;
+    color: var(--muted);
+    font-weight: 300;
+    max-width: 520px;
+    line-height: 1.65;
+  }
+
+  /* ── Form grid ───────────────────────────────── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  /* ── Field card ──────────────────────────────── */
+  .field {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    animation: fadeUp .5s ease both;
+  }
+  .field:hover { border-color: #2a3d2e; }
+  .field.error  { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+  .field.valid  { border-color: var(--accent2); }
+
+  .field-label {
+    font-family: var(--font-head);
+    font-size: 12px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .field-desc {
+    font-size: 11px; color: #3d5241;
+    margin-bottom: 10px; line-height: 1.4;
+  }
+
+  /* Number input */
+  input[type="number"] {
+    width: 100%; padding: 10px 14px;
+    background: #0e150f; border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: var(--font-body); font-size: 15px;
+    outline: none; transition: border-color var(--transition);
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type="number"]:focus { border-color: var(--accent2); }
+
+  /* Toggle switch for binary fields */
+  .toggle-wrap {
+    display: flex; align-items: center; gap: 14px; margin-top: 4px;
+  }
+  .toggle {
+    position: relative; width: 52px; height: 28px; cursor: pointer;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0;
+    background: #1a261c; border: 1px solid var(--border);
+    border-radius: 14px;
+    transition: background var(--transition);
+  }
+  .slider::before {
+    content: '';
+    position: absolute; top: 4px; left: 4px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--muted);
+    transition: transform var(--transition), background var(--transition);
+  }
+  .toggle input:checked + .slider { background: #0d2b17; border-color: var(--accent2); }
+  .toggle input:checked + .slider::before {
+    transform: translateX(24px);
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .toggle-val {
+    font-family: var(--font-head);
+    font-size: 13px; font-weight: 600;
+    color: var(--muted); min-width: 28px;
+    transition: color var(--transition);
+  }
+  .toggle-val.on { color: var(--accent); }
+
+  /* Segmented for small ordinals */
+  .seg-group {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;
+  }
+  .seg-btn {
+    padding: 6px 14px; border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #0e150f; color: var(--muted);
+    font-family: var(--font-head); font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all var(--transition);
+  }
+  .seg-btn:hover { border-color: var(--accent2); color: var(--text); }
+  .seg-btn.active {
+    background: #0d2b17; border-color: var(--accent);
+    color: var(--accent); box-shadow: 0 0 8px rgba(45,255,122,.15);
+  }
+
+  /* ── Submit ──────────────────────────────────── */
+  .submit-row {
+    display: flex; align-items: center; gap: 20px;
+    margin-bottom: 40px;
+    animation: fadeUp .6s .3s ease both;
+  }
+  .btn-predict {
+    padding: 16px 40px;
+    background: var(--accent); color: #020d05;
+    font-family: var(--font-head); font-size: 14px; font-weight: 700;
+    letter-spacing: .05em; text-transform: uppercase;
+    border: none; border-radius: 8px; cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+  }
+  .btn-predict:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(45,255,122,.3);
+  }
+  .btn-predict:active { transform: translateY(0); }
+  .btn-predict:disabled {
+    opacity: .4; cursor: not-allowed; transform: none; box-shadow: none;
+  }
+  .btn-reset {
+    padding: 16px 24px;
+    background: transparent; color: var(--muted);
+    font-family: var(--font-head); font-size: 13px; font-weight: 600;
+    letter-spacing: .05em; text-transform: uppercase;
+    border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+    transition: all var(--transition);
+  }
+  .btn-reset:hover { border-color: var(--muted); color: var(--text); }
+
+  /* ── Result card ─────────────────────────────── */
+  #result {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px 40px;
+    animation: fadeUp .5s ease both;
+    position: relative; overflow: hidden;
+  }
+  #result::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 16px 16px 0 0;
+  }
+  #result.show { display: block; }
+
+  .result-label {
+    font-family: var(--font-head); font-size: 11px; font-weight: 600;
+    letter-spacing: .15em; text-transform: uppercase; color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .result-score {
+    font-family: var(--font-head);
+    font-size: clamp(3rem, 8vw, 5rem);
+    font-weight: 800; line-height: 1;
+    letter-spacing: -.04em;
+  }
+  .result-score .unit { font-size: .35em; color: var(--muted); vertical-align: super; }
+
+  .result-level {
+    display: inline-block;
+    margin-top: 12px; padding: 6px 18px;
+    border-radius: 20px;
+    font-family: var(--font-head); font-size: 13px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+  .level-low      { background: rgba(45,255,122,.12); color: var(--accent); border: 1px solid rgba(45,255,122,.25); }
+  .level-moderate { background: rgba(255,179,71,.12);  color: var(--warn);   border: 1px solid rgba(255,179,71,.25); }
+  .level-high     { background: rgba(255,120,0,.12);   color: #ff7800;       border: 1px solid rgba(255,120,0,.25); }
+  .level-veryhigh { background: rgba(255,77,77,.12);   color: var(--danger); border: 1px solid rgba(255,77,77,.25); }
+
+  /* Meter bar */
+  .meter-wrap {
+    margin-top: 28px;
+  }
+  .meter-track {
+    height: 8px; border-radius: 4px;
+    background: var(--border); overflow: hidden;
+  }
+  .meter-fill {
+    height: 100%; border-radius: 4px;
+    transition: width 1.1s cubic-bezier(.4,0,.2,1), background 1.1s ease;
+    width: 0%;
+  }
+
+  /* ── Error banner ────────────────────────────── */
+  #error-box {
+    display: none;
+    background: rgba(255,77,77,.07);
+    border: 1px solid rgba(255,77,77,.3);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    margin-bottom: 28px;
+    font-size: 13px; color: #ff9999; line-height: 1.7;
+    white-space: pre-wrap;
+    animation: fadeUp .3s ease both;
+  }
+  #error-box.show { display: block; }
+
+  /* ── Loader ──────────────────────────────────── */
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(45,255,122,.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    vertical-align: middle; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Animations ──────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* stagger fields */
+  .field:nth-child(1)  { animation-delay: .05s }
+  .field:nth-child(2)  { animation-delay: .08s }
+  .field:nth-child(3)  { animation-delay: .11s }
+  .field:nth-child(4)  { animation-delay: .14s }
+  .field:nth-child(5)  { animation-delay: .17s }
+  .field:nth-child(6)  { animation-delay: .20s }
+  .field:nth-child(7)  { animation-delay: .23s }
+  .field:nth-child(8)  { animation-delay: .26s }
+  .field:nth-child(9)  { animation-delay: .29s }
+  .field:nth-child(10) { animation-delay: .32s }
+  .field:nth-child(11) { animation-delay: .35s }
+  .field:nth-child(12) { animation-delay: .38s }
+  .field:nth-child(13) { animation-delay: .41s }
+  .field:nth-child(14) { animation-delay: .44s }
+  .field:nth-child(15) { animation-delay: .47s }
+
+  /* ── Footer note ─────────────────────────────── */
+  .footnote {
+    margin-top: 48px; padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--muted); line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-line">
+      <div class="logo-dot"></div>
+      <span class="logo-label">Health Risk Assessment</span>
+    </div>
+    <h1>Diabetes Risk<br><span>Predictor</span></h1>
+    <p class="subtitle">
+      Fill in your health indicators below. The model will estimate your
+      diabetes risk using a trained XGBoost classifier based on the
+      CDC BRFSS survey dataset.
+    </p>
+  </header>
+
+  <!-- Error banner -->
+  <div id="error-box"></div>
+
+  <!-- Form -->
+  <form id="risk-form" novalidate>
+    <div class="form-grid" id="form-grid"></div>
+
+    <div class="submit-row">
+      <button type="submit" class="btn-predict" id="submit-btn">
+        Calculate Risk
+      </button>
+      <button type="button" class="btn-reset" id="reset-btn">Reset</button>
+    </div>
+  </form>
+
+  <!-- Result -->
+  <div id="result">
+    <div class="result-label">Estimated diabetes risk</div>
+    <div class="result-score" id="score-display">—</div>
+    <div id="level-badge" class="result-level">—</div>
+    <div class="meter-wrap">
+      <div class="meter-track">
+        <div class="meter-fill" id="meter-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="footnote">
+    ⚠️ This tool is for informational purposes only and is not a substitute
+    for professional medical advice. Consult a qualified healthcare provider
+    for diagnosis and treatment.
+  </p>
+</div>
+
+<script>
+// ── Field definitions ──────────────────────────────────────────────────────
+const FIELDS = [
+  { key: "HighBP",               label: "High Blood Pressure",    desc: "Currently diagnosed with high BP",         type: "binary" },
+  { key: "BMI",                  label: "BMI",                    desc: "Body Mass Index (10 – 100)",               type: "number", min: 10,  max: 100, step: 0.1  },
+  { key: "Smoker",               label: "Smoker",                 desc: "Smoked 100+ cigarettes in lifetime",       type: "binary" },
+  { key: "Stroke",               label: "Stroke History",         desc: "Ever had a stroke",                        type: "binary" },
+  { key: "HeartDiseaseorAttack", label: "Heart Disease",          desc: "Coronary heart disease or heart attack",   type: "binary" },
+  { key: "PhysActivity",         label: "Physical Activity",      desc: "Active in the past 30 days",               type: "binary" },
+  { key: "Fruits",               label: "Fruit Intake",           desc: "Eats fruit 1+ times/day",                  type: "binary" },
+  { key: "Veggies",              label: "Vegetable Intake",       desc: "Eats vegetables 1+ times/day",             type: "binary" },
+  { key: "HvyAlcoholConsump",    label: "Heavy Alcohol Use",      desc: "Heavy alcohol consumption",                type: "binary" },
+  { key: "GenHlth",              label: "General Health",         desc: "1 = Excellent  →  5 = Poor",              type: "seg",    values: [1,2,3,4,5] },
+  { key: "MentHlth",             label: "Poor Mental Health Days",desc: "Days in past month (0 – 30)",              type: "number", min: 0,   max: 30,  step: 1    },
+  { key: "PhysHlth",             label: "Poor Physical Health Days",desc:"Days in past month (0 – 30)",             type: "number", min: 0,   max: 30,  step: 1    },
+  { key: "DiffWalk",             label: "Difficulty Walking",     desc: "Trouble walking or climbing stairs",       type: "binary" },
+  { key: "Sex",                  label: "Sex",                    desc: "Biological sex",                           type: "seg",    values: [0,1], labels: ["Female","Male"] },
+  { key: "Age",                  label: "Age Group",              desc: "1 = 18–24  →  13 = 80+",                  type: "seg",    values: [1,2,3,4,5,6,7,8,9,10,11,12,13] },
+];
+
+const state = {};   // key → current value
+
+// ── Build form ─────────────────────────────────────────────────────────────
+function buildForm() {
+  const grid = document.getElementById('form-grid');
+  FIELDS.forEach((f, i) => {
+    const card = document.createElement('div');
+    card.className = 'field';
+    card.dataset.key = f.key;
+
+    card.innerHTML = `<div class="field-label">${f.label}</div>
+                      <div class="field-desc">${f.desc}</div>`;
+
+    if (f.type === 'binary') {
+      state[f.key] = 0;
+      card.innerHTML += `
+        <div class="toggle-wrap">
+          <label class="toggle">
+            <input type="checkbox" data-key="${f.key}"/>
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-val" id="tv-${f.key}">No</span>
+        </div>`;
+    } else if (f.type === 'number') {
+      state[f.key] = null;
+      card.innerHTML += `
+        <input type="number" data-key="${f.key}"
+               min="${f.min}" max="${f.max}" step="${f.step}"
+               placeholder="Enter value…"/>`;
+    } else if (f.type === 'seg') {
+      state[f.key] = null;
+      const btns = f.values.map((v, vi) => {
+        const lbl = (f.labels && f.labels[vi]) ? f.labels[vi] : v;
+        return `<button type="button" class="seg-btn" data-key="${f.key}" data-val="${v}">${lbl}</button>`;
+      }).join('');
+      card.innerHTML += `<div class="seg-group">${btns}</div>`;
+    }
+
+    grid.appendChild(card);
+  });
+
+  // ── Event listeners ──────────────────────────────────────────────────────
+  grid.addEventListener('change', e => {
+    const el = e.target;
+    if (el.type === 'checkbox') {
+      const key = el.dataset.key;
+      state[key] = el.checked ? 1 : 0;
+      const label = document.getElementById(`tv-${key}`);
+      label.textContent = el.checked ? 'Yes' : 'No';
+      label.className = 'toggle-val' + (el.checked ? ' on' : '');
+      markField(key, true);
+    }
+    if (el.type === 'number') {
+      const key = el.dataset.key;
+      const f = FIELDS.find(x => x.key === key);
+      const v = parseFloat(el.value);
+      if (el.value === '' || isNaN(v) || v < f.min || v > f.max) {
+        state[key] = null;
+        markField(key, false);
+      } else {
+        state[key] = v;
+        markField(key, true);
+      }
+    }
+  });
+
+  grid.addEventListener('click', e => {
+    const btn = e.target.closest('.seg-btn');
+    if (!btn) return;
+    const key = btn.dataset.key;
+    const val = Number(btn.dataset.val);
+    state[key] = val;
+    // deactivate siblings
+    document.querySelectorAll(`.seg-btn[data-key="${key}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    markField(key, true);
+  });
+}
+
+function markField(key, ok) {
+  const card = document.querySelector(`.field[data-key="${key}"]`);
+  if (!card) return;
+  card.classList.toggle('valid', ok);
+  card.classList.toggle('error', !ok);
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────
+document.getElementById('risk-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  clearError();
+  hideResult();
+
+  // Client-side completeness check
+  const missing = FIELDS.filter(f => state[f.key] === null || state[f.key] === undefined);
+  if (missing.length) {
+    missing.forEach(f => markField(f.key, false));
+    showError(`Please fill in: ${missing.map(f => f.label).join(', ')}`);
+    return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Analysing…';
+
+  try {
+    const res  = await fetch('http://localhost:5000/predict', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(state),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showError(data.error || 'Server error.');
+    } else {
+      showResult(data.risk, data.level);
+    }
+  } catch (err) {
+    showError('Could not reach the server.\nMake sure the Flask backend is running on port 5000.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Calculate Risk';
+  }
+});
+
+// ── Reset ──────────────────────────────────────────────────────────────────
+document.getElementById('reset-btn').addEventListener('click', () => {
+  FIELDS.forEach(f => {
+    state[f.key] = f.type === 'binary' ? 0 : null;
+    const card = document.querySelector(`.field[data-key="${f.key}"]`);
+    if (card) { card.classList.remove('valid','error'); }
+  });
+  // reset checkboxes
+  document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+    const label = document.getElementById(`tv-${cb.dataset.key}`);
+    if (label) { label.textContent = 'No'; label.className = 'toggle-val'; }
+  });
+  // reset number inputs
+  document.querySelectorAll('input[type="number"]').forEach(inp => inp.value = '');
+  // reset seg buttons
+  document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+
+  clearError();
+  hideResult();
+});
+
+// ── Result display ─────────────────────────────────────────────────────────
+function showResult(risk, level) {
+  const resultEl = document.getElementById('result');
+  const scoreEl  = document.getElementById('score-display');
+  const badgeEl  = document.getElementById('level-badge');
+  const meterEl  = document.getElementById('meter-fill');
+
+  resultEl.classList.add('show');
+  resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Animate counter
+  let start = 0; const end = risk; const dur = 900;
+  const startTime = performance.now();
+  function tick(now) {
+    const t = Math.min((now - startTime) / dur, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    start = end * ease;
+    scoreEl.innerHTML = `${start.toFixed(1)}<span class="unit">%</span>`;
+    if (t < 1) requestAnimationFrame(tick);
+    else scoreEl.innerHTML = `${end}<span class="unit">%</span>`;
+  }
+  requestAnimationFrame(tick);
+
+  // Level badge
+  badgeEl.textContent = level;
+  badgeEl.className = 'result-level ' + levelClass(level);
+
+  // Meter
+  const color = levelColor(level);
+  setTimeout(() => {
+    meterEl.style.width   = Math.min(risk, 100) + '%';
+    meterEl.style.background = color;
+  }, 80);
+}
+
+function hideResult() {
+  document.getElementById('result').classList.remove('show');
+}
+
+function levelClass(level) {
+  return {
+    'Low Risk':       'level-low',
+    'Moderate Risk':  'level-moderate',
+    'High Risk':      'level-high',
+    'Very High Risk': 'level-veryhigh',
+  }[level] || '';
+}
+
+function levelColor(level) {
+  return {
+    'Low Risk':       'var(--accent)',
+    'Moderate Risk':  'var(--warn)',
+    'High Risk':      '#ff7800',
+    'Very High Risk': 'var(--danger)',
+  }[level] || 'var(--accent)';
+}
+
+// ── Error helpers ──────────────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-box');
+  el.textContent = msg;
+  el.classList.add('show');
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function clearError() {
+  const el = document.getElementById('error-box');
+  el.textContent = '';
+  el.classList.remove('show');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+buildForm();
+</script>
+</body>
+</html>
