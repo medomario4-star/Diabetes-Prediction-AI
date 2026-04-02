@@ -338,38 +338,16 @@ if __name__ == "__main__":
 
     # ── Valid example: high-risk male, aged 65–69 ─────────────────────────────
     valid_user = {
-        "HighBP": 1, "BMI": 38, "Smoker": 1, "Stroke": 1,
+        "HighBP": 1, "BMI": 38, "Smoker": 1, "Stroke": 2,
         "HeartDiseaseorAttack": 1, "PhysActivity": 0, "Fruits": 0, "Veggies": 0,
         "HvyAlcoholConsump": 0, "GenHlth": 4, "MentHlth": 10, "PhysHlth": 15,
         "DiffWalk": 1, "Sex": 1, "Age": 10,
     }
 
-    risk, level = predict_risk(valid_user, bundle)
-    print("\nValid User Risk:")
-    print("  Risk Score :", risk, "%")
-    print("  Risk Level :", level)
-
-    # ── Invalid example: demonstrates validation errors ───────────────────────
-    print("\n--- Testing validation with bad inputs ---")
-    invalid_user = {
-        "HighBP": 2,        # binary → must be 0 or 1
-        "BMI": 150,         # continuous → max is 100
-        "Smoker": -1,       # binary → must be 0 or 1
-        "Stroke": 1,
-        "HeartDiseaseorAttack": 1,
-        "PhysActivity": 0,
-        "Fruits": 0,
-        "Veggies": 0,
-        "HvyAlcoholConsump": 0,
-        "GenHlth": 7,       # ordinal → max is 5
-        "MentHlth": 35,     # continuous → max is 30
-        "PhysHlth": 15,
-        "DiffWalk": 1,
-        "Sex": 1,
-        "Age": 0,           # ordinal → min is 1
-    }
-
     try:
-        predict_risk(invalid_user, bundle)
+        risk, level = predict_risk(valid_user, bundle)
+        print("\nValid User Risk:")
+        print("  Risk Score :", risk, "%")
+        print("  Risk Level :", level)
     except ValueError as e:
         print(e)
