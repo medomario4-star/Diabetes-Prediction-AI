@@ -17,7 +17,6 @@ RANDOM_STATE = 42
 # These are health indicators collected via survey (CDC BRFSS dataset).
 FEATURES = [
     "HighBP",               # Has high blood pressure? (0/1)
-    "HighChol",             # Has high cholesterol? (0/1)
     "BMI",                  # Body Mass Index (continuous)
     "Smoker",               # Has smoked 100+ cigarettes in lifetime? (0/1)
     "Stroke",               # Ever had a stroke? (0/1)
@@ -175,10 +174,10 @@ if __name__ == "__main__":
 
     # Example: healthy female, aged 25–29
     example_user = {
-        "HighBP": 0, "HighChol": 0, "BMI": 22, "Smoker": 0, "Stroke": 0,
-        "HeartDiseaseorAttack": 0, "PhysActivity": 1, "Fruits": 1, "Veggies": 1,
-        "HvyAlcoholConsump": 0, "GenHlth": 1, "MentHlth": 0, "PhysHlth": 0,
-        "DiffWalk": 0, "Sex": 0, "Age": 2,
+        'HighBP': 1, 'BMI': 27, 'Smoker': 0, 'Stroke': 0,
+        'HeartDiseaseorAttack': 0, 'PhysActivity': 1, 'Fruits': 0, 'Veggies': 1,
+        'HvyAlcoholConsump': 0, 'GenHlth': 3, 'MentHlth': 2, 'PhysHlth': 2,
+        'DiffWalk': 0, 'Sex': 1, 'Age': 6
     }
 
     risk, level = predict_risk(example_user, bundle)
