@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Your Recommendations — Diabetes Risk Assessment</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --white:#ffffff; --gray-50:#f8f9fa; --gray-100:#f1f3f5; --gray-200:#e9ecef;
+  --gray-300:#dee2e6; --gray-400:#ced4da; --gray-500:#adb5bd; --gray-600:#6c757d;
+  --gray-700:#495057; --gray-800:#343a40; --gray-900:#212529;
+  --blue:#2563eb; --blue-light:#eff6ff; --blue-mid:#bfdbfe;
+  --green:#16a34a; --green-light:#f0fdf4; --green-mid:#bbf7d0;
+  --amber:#d97706; --amber-light:#fffbeb; --amber-mid:#fde68a;
+  --orange:#ea580c; --orange-light:#fff7ed; --orange-mid:#fed7aa;
+  --red:#dc2626; --red-light:#fef2f2; --red-mid:#fecaca;
+  --radius-sm:6px; --radius:10px; --radius-lg:16px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --header-h: 72px;
+  --tab-h: 48px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Geist',system-ui,sans-serif;font-size:14px;line-height:1.6;color:var(--gray-800);background:var(--gray-50);display:flex;flex-direction:column;}
+
+/* ── TOP HEADER STRIP ── */
+.top-bar{
+  height:var(--header-h);
+  background:var(--white);
+  border-bottom:1px solid var(--gray-200);
+  display:flex;align-items:center;gap:16px;
+  padding:0 24px;
+  flex-shrink:0;
+  box-shadow:var(--shadow-sm);
+}
+.back-link{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--gray-600);text-decoration:none;padding:6px 12px;border:1px solid var(--gray-300);border-radius:var(--radius-sm);background:var(--gray-50);white-space:nowrap;transition:all .15s ease;}
+.back-link:hover{border-color:var(--gray-400);color:var(--gray-800);}
+.bar-title{flex:1;}
+.bar-title h1{font-family:'Instrument Serif',Georgia,serif;font-size:1.25rem;font-weight:400;color:var(--gray-900);line-height:1.2;}
+.bar-title p{font-size:12px;color:var(--gray-500);margin-top:1px;}
+.score-block{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.score-num{font-family:'Instrument Serif',Georgia,serif;font-size:2.4rem;line-height:1;color:var(--gray-900);letter-spacing:-.02em;}
+.score-num .unit{font-size:1.1rem;color:var(--gray-400);}
+.summary-level{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
+.badge-low      {background:var(--green-light); color:var(--green);  border:1px solid var(--green-mid);}
+.badge-moderate {background:var(--amber-light); color:var(--amber);  border:1px solid var(--amber-mid);}
+.badge-high     {background:var(--orange-light);color:var(--orange); border:1px solid var(--orange-mid);}
+.badge-veryhigh {background:var(--red-light);   color:var(--red);    border:1px solid var(--red-mid);}
+
+/* ── TAB BAR ── */
+.tab-bar{
+  height:var(--tab-h);
+  background:var(--white);
+  border-bottom:1px solid var(--gray-200);
+  display:flex;align-items:stretch;
+  padding:0 24px;
+  flex-shrink:0;
+  gap:0;
+}
+.tab-btn{
+  padding:0 20px;
+  font-family:'Geist',sans-serif;font-size:13px;font-weight:500;
+  color:var(--gray-500);background:none;border:none;cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:color .15s,border-color .15s;
+  white-space:nowrap;
+}
+.tab-btn:hover{color:var(--gray-800);}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+/* ── SCROLLABLE PANEL AREA ── */
+.panels{
+  flex:1;
+  overflow:hidden;
+  position:relative;
+}
+.panel{
+  position:absolute;inset:0;
+  overflow-y:auto;
+  padding:24px;
+  display:none;
+  animation:fadeIn .2s ease;
+}
+.panel.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── INNER LAYOUTS ── */
+.inner{max-width:800px;margin:0 auto;}
+
+/* Overview panel: 2-col grid */
+.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:640px){.overview-grid{grid-template-columns:1fr;}}
+
+/* Factor chips */
+.factor-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
+.factor-chip{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gray-700);background:var(--white);border:1px solid var(--gray-200);border-radius:20px;padding:6px 14px;box-shadow:var(--shadow-sm);}
+.factor-chip .chip-rank{font-weight:700;color:var(--gray-400);}
+.factor-chip .chip-pct{font-weight:600;color:var(--gray-900);}
+
+/* Rec cards — compact */
+.rec-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow-sm);display:flex;gap:14px;align-items:flex-start;animation:fadeIn .3s ease both;}
+.rec-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.rec-icon.priority{background:var(--red-light);}
+.rec-icon.standard{background:var(--blue-light);}
+.rec-body{flex:1;min-width:0;}
+.rec-top-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:3px;}
+.rec-title{font-size:13px;font-weight:600;color:var(--gray-900);line-height:1.3;}
+.rec-flag{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--red);background:var(--red-light);border:1px solid var(--red-mid);border-radius:20px;padding:2px 8px;white-space:nowrap;flex-shrink:0;}
+.rec-desc{font-size:12px;color:var(--gray-600);line-height:1.55;}
+.rec-context{margin-top:6px;font-size:11px;color:var(--gray-500);background:var(--gray-50);border:1px solid var(--gray-100);border-radius:var(--radius-sm);padding:6px 10px;}
+.rec-context strong{color:var(--gray-700);font-weight:600;}
+
+/* Focus cards — Deep Dive tab */
+.focus-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:16px;animation:fadeIn .3s ease both;}
+.focus-header{display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--gray-100);}
+.focus-rank{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.rank-1{background:#fef3c7;color:#92400e;}
+.rank-2{background:#f3f4f6;color:#374151;}
+.rank-3{background:#fdf4ff;color:#6b21a8;}
+.focus-heading{flex:1;}
+.focus-title{font-size:14px;font-weight:600;color:var(--gray-900);}
+.focus-sub{font-size:11px;color:var(--gray-500);margin-top:1px;}
+.focus-pct{font-family:'Instrument Serif',Georgia,serif;font-size:1.5rem;color:var(--gray-900);white-space:nowrap;letter-spacing:-.02em;}
+.focus-pct .pct-unit{font-size:.8rem;color:var(--gray-400);}
+.focus-body{padding:16px 20px 18px;}
+.focus-body p{font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:12px;}
+.tip-list{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.tip-item{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--gray-700);line-height:1.6;}
+.tip-bullet{width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:6px;}
+.tip-item strong{color:var(--gray-900);font-weight:600;}
+
+/* Section label */
+.section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--gray-500);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--gray-200);}
+
+/* CTA row */
+.cta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:20px;}
+.btn-primary{padding:0 22px;height:40px;background:var(--blue);color:var(--white);font-family:'Geist',sans-serif;font-size:13px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:background .15s;display:inline-flex;align-items:center;gap:7px;text-decoration:none;}
+.btn-primary:hover{background:#1d4ed8;}
+.btn-outline{padding:0 20px;height:40px;background:transparent;color:var(--blue);border:1px solid var(--blue);border-radius:var(--radius-sm);font-family:'Geist',sans-serif;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;transition:all .15s;}
+.btn-outline:hover{background:var(--blue);color:var(--white);}
+
+/* Disclaimer — compact */
+.disclaimer{background:#fffbeb;border:1px solid #fde68a;border-left:4px solid var(--amber);border-radius:var(--radius);padding:12px 16px;display:flex;gap:10px;align-items:flex-start;margin-top:20px;}
+.disclaimer-title{font-size:12px;font-weight:600;color:#92400e;margin-bottom:4px;}
+.disclaimer-list{list-style:none;}
+.disclaimer-list li{font-size:11px;color:#78350f;line-height:1.5;padding-left:12px;position:relative;}
+.disclaimer-list li::before{content:'–';position:absolute;left:0;color:var(--amber);font-weight:600;}
+
+/* Empty state */
+.empty-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:48px 24px;text-align:center;}
+.empty-card h2{font-family:'Instrument Serif',Georgia,serif;font-size:1.5rem;font-weight:400;color:var(--gray-900);margin-bottom:8px;}
+.empty-card p{font-size:13px;color:var(--gray-600);max-width:360px;margin:0 auto 18px;}
+
+/* Grid helpers */
+.rec-col{display:flex;flex-direction:column;gap:12px;}
+.col-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--gray-500);margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR: always visible -->
+<div class="top-bar" id="topBar">
+  <a href="results.html" class="back-link">← Results</a>
+  <div class="bar-title">
+    <h1>Your Personalised <em style="font-style:italic;color:var(--gray-600)">Recommendations</em></h1>
+    <p>Tailored to your health indicators</p>
+  </div>
+  <div class="score-block">
+    <div class="score-num" id="scoreNum">—<span class="unit">%</span></div>
+    <div id="levelBadge" class="summary-level badge-high">—</div>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('overview', this)">Overview</button>
+  <button class="tab-btn" onclick="switchTab('deepdive', this)" id="tabDeep">Deep Dives</button>
+</div>
+
+<!-- PANELS -->
+<div class="panels">
+
+  <!-- PANEL 1: Overview -->
+  <div class="panel active" id="panel-overview">
+    <div class="inner" id="overview-content">
+      <div class="empty-card">
+        <h2>No assessment found</h2>
+        <p>Please complete the questionnaire first so we can generate your recommendations.</p>
+        <a href="index.html" class="btn-primary">Start Assessment →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 2: Deep Dives -->
+  <div class="panel" id="panel-deepdive">
+    <div class="inner" id="deepdive-content"></div>
+  </div>
+
+
+
+</div>
+
+<script>
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+}
+
+const stored = sessionStorage.getItem('diabetesResult');
+if (!stored) {
+  /* empty state already in HTML */
+} else {
+  const result  = JSON.parse(stored);
+  const risk    = result.risk;
+  const level   = result.level || '';
+  const factors = result.factors || [];
+  const inputs  = result.inputs || {};
+
+  /* ── fill header ── */
+  document.getElementById('scoreNum').innerHTML = risk + '<span class="unit">%</span>';
+  const lbadge = document.getElementById('levelBadge');
+  lbadge.textContent = level;
+  lbadge.className = 'summary-level ' + ({
+    'Low Risk':'badge-low','Moderate Risk':'badge-moderate',
+    'High Risk':'badge-high','Very High Risk':'badge-veryhigh',
+  }[level] || 'badge-high');
+
+  function levelClass(lvl) {
+    return {'Low Risk':'badge-low','Moderate Risk':'badge-moderate','High Risk':'badge-high','Very High Risk':'badge-veryhigh'}[lvl] || 'badge-low';
+  }
+
+  /* ── RECS knowledge base (unchanged) ── */
+  const RECS = {
+    BMI: v => v >= 30 ? {icon:'⚖️',priority:true,title:'Work toward a lower BMI',desc:'Your BMI falls in the obese range, which is one of the strongest predictors of diabetes risk. Even a 5–7% reduction in body weight through diet and activity changes can meaningfully lower your risk.',context:`Your BMI: <strong>${v}</strong> (target range: 18.5–24.9)`} : v >= 25 ? {icon:'⚖️',priority:false,title:'Monitor your weight trend',desc:'Your BMI is in the overweight range. Small, sustainable changes — like reducing portion sizes or increasing daily movement — can help prevent further increases.',context:`Your BMI: <strong>${v}</strong> (target range: 18.5–24.9)`} : null,
+    HighBP: v => v===1?{icon:'🩺',priority:true,title:'Manage your blood pressure',desc:"High blood pressure is closely linked to diabetes risk and cardiovascular disease. Reducing sodium intake, managing stress, staying active, and following your doctor's treatment plan can all help.",context:'You reported a high blood pressure diagnosis.'}:null,
+    PhysActivity: v => v===0?{icon:'🏃',priority:true,title:'Add regular physical activity',desc:'Aim for at least 150 minutes of moderate activity per week — brisk walking, cycling, or swimming all count. Regular movement improves insulin sensitivity, often independent of weight loss.',context:'You reported no physical activity in the past 30 days.'}:null,
+    GenHlth: v => v>=4?{icon:'📋',priority:false,title:'Schedule a general check-up',desc:'You rated your overall health as fair or poor. A routine check-up can help identify underlying issues contributing to your risk score and establish a baseline for tracking improvement.',context:`Self-rated general health: <strong>${{1:'Excellent',2:'Very Good',3:'Good',4:'Fair',5:'Poor'}[v]||v}</strong>`}:null,
+    HeartDiseaseorAttack: v => v===1?{icon:'❤️',priority:true,title:'Coordinate care with your cardiology team',desc:'A history of heart disease or heart attack means diabetes prevention should be managed alongside your existing cardiovascular care, since the two conditions often compound each other.',context:'You reported a history of heart disease or heart attack.'}:null,
+    Stroke: v => v===1?{icon:'🧠',priority:true,title:'Continue stroke follow-up care',desc:"A history of stroke is a significant factor in your risk score. Keep up with neurology and cardiovascular follow-ups, and discuss diabetes prevention as part of your ongoing care plan.",context:'You reported a history of stroke.'}:null,
+    Smoker: v => v===1?{icon:'🚭',priority:true,title:'Consider quitting smoking',desc:"Smoking increases insulin resistance and raises diabetes risk on top of its cardiovascular effects. A healthcare provider can connect you with cessation programs and support options.",context:'You reported having smoked 100+ cigarettes in your lifetime.'}:null,
+    HvyAlcoholConsump: v => v===1?{icon:'🍷',priority:false,title:'Reduce alcohol consumption',desc:'Heavy alcohol use can interfere with blood sugar regulation and liver function over time. Consider cutting back gradually, and talk to a provider about what a safe limit looks like for you.',context:'You reported heavy alcohol consumption.'}:null,
+    Fruits: v => v===0?{icon:'🍎',priority:false,title:'Add more fruit to your diet',desc:'Eating fruit at least once a day provides fiber and nutrients that support healthy blood sugar regulation and overall metabolic health.',context:'You reported eating fruit less than once a day.'}:null,
+    Veggies: v => v===0?{icon:'🥦',priority:false,title:'Add more vegetables to your diet',desc:'Vegetables are rich in fiber and low in calories, helping manage weight and supporting steadier blood sugar levels throughout the day.',context:'You reported eating vegetables less than once a day.'}:null,
+    DiffWalk: v => v===1?{icon:'🦽',priority:false,title:'Explore low-impact activity options',desc:"Difficulty walking can make traditional exercise harder, but chair-based exercises, swimming, or physical therapy can offer accessible ways to stay active and support metabolic health.",context:'You reported difficulty walking or climbing stairs.'}:null,
+    MentHlth: v => v>=14?{icon:'🧘',priority:false,title:'Prioritise your mental wellbeing',desc:"You reported a high number of poor mental health days recently. Chronic stress can affect blood sugar regulation and make it harder to maintain healthy habits — consider speaking with a mental health professional.",context:`Poor mental health days (past month): <strong>${v}</strong>`}:null,
+    PhysHlth: v => v>=14?{icon:'🩹',priority:false,title:'Follow up on physical health concerns',desc:"You reported frequent days of poor physical health recently. It may be worth discussing these patterns with a healthcare provider at your next visit.",context:`Poor physical health days (past month): <strong>${v}</strong>`}:null,
+    Age: v => v>=9?{icon:'📅',priority:false,title:'Stay proactive with age-related screening',desc:'Diabetes risk naturally increases with age. Regular screening (e.g. annual blood glucose or HbA1c tests) becomes more valuable from this point forward, even without other risk factors.',context:`Age group: <strong>${{9:'60–64',10:'65–69',11:'70–74',12:'75–79',13:'80+'}[v]||v}</strong>`}:null,
+  };
+
+  /* ── FACTOR TIPS (unchanged) ── */
+  const FACTOR_TIPS = {
+    BMI: v=>({intro:`Your BMI was the model's top-weighted factor. BMI reflects body composition and is one of the most modifiable contributors to diabetes risk — meaningful change is realistic with sustained effort.`,tips:['Aim for a modest, steady weight loss of <strong>0.5–1 kg (1–2 lb) per week</strong> rather than rapid changes — this is more sustainable and easier on your metabolism.','Focus on <strong>protein and fiber at each meal</strong> (lean meats, legumes, vegetables, whole grains) — these improve satiety and help control portion sizes naturally.','Reduce <strong>liquid calories</strong> first: sugary drinks, juices, and alcohol are often the easiest place to cut without feeling deprived.','Track progress with <strong>waist circumference</strong> as well as weight — it reflects visceral fat, which is closely tied to insulin resistance.','Combine <strong>strength training 2x/week</strong> with cardio — preserving muscle mass while losing fat improves long-term blood sugar control.']}),
+    HighBP: v=>({intro:`High blood pressure was a major factor in your score. It often improves alongside the same lifestyle changes that reduce diabetes risk, so progress here tends to compound.`,tips:['Cut back on <strong>sodium</strong> — aim for under 2,300mg/day, mainly by reducing processed foods, takeout, and packaged snacks rather than just the salt shaker.','Increase <strong>potassium-rich foods</strong> (bananas, potatoes, spinach, beans) — potassium helps balance sodium\'s effect on blood pressure.','Limit <strong>alcohol</strong> to no more than one drink per day, as excess alcohol is a common, under-recognized contributor to high BP.','Build a habit of <strong>daily movement</strong> — even a 20–30 minute walk can lower blood pressure measurably within weeks.','Take medications <strong>exactly as prescribed</strong> and monitor at home if your provider recommends it — untreated high BP compounds diabetes risk significantly.']}),
+    PhysActivity: v=>({intro:`Lack of physical activity was a significant factor. This is one of the most directly actionable areas — activity improves insulin sensitivity often within days of starting.`,tips:['Start with <strong>10-minute walks</strong> after meals — post-meal walking has an outsized effect on blunting blood sugar spikes.','Aim to build up to <strong>150 minutes/week</strong> of moderate activity (brisk walking, cycling, swimming) — spread across most days rather than all at once.','Add <strong>2 short strength sessions/week</strong> (bodyweight exercises, resistance bands) — muscle tissue uses glucose more efficiently than fat tissue.','Break up <strong>long sitting periods</strong> with 2–3 minutes of movement every hour — this alone has been shown to improve blood sugar control.','Choose activities you actually enjoy — <strong>consistency matters more than intensity</strong> for long-term risk reduction.']}),
+    GenHlth: v=>({intro:`Your self-rated general health was a notable factor. This often reflects several underlying issues at once, so addressing it usually means tackling a few areas together.`,tips:['Schedule a <strong>comprehensive check-up</strong> — bloodwork (including HbA1c, lipids, and kidney function) can clarify what\'s driving a lower self-rating.','Review <strong>sleep quality</strong> — poor sleep raises blood sugar and blunts hunger regulation; aim for 7–9 hours with a consistent schedule.','Address any <strong>chronic pain or mobility issues</strong> with your provider, as these often limit activity and worsen overall health ratings.','Revisit <strong>medication management</strong> — make sure existing conditions (BP, cholesterol, etc.) are well controlled, since these compound each other.','Build in <strong>stress-reduction practices</strong> (e.g. short daily walks, breathing exercises, social connection) — chronic stress affects nearly every body system.']}),
+    Age: v=>({intro:`Age was a leading factor in your score. While age itself can't be changed, the good news is that the other modifiable factors above have an outsized effect at this stage of life.`,tips:['Schedule <strong>regular screening</strong> (annual fasting glucose or HbA1c) — early detection of prediabetes allows for much simpler interventions.','Prioritise <strong>muscle-preserving activity</strong> — strength training becomes more important with age, as muscle loss directly worsens insulin resistance.','Review <strong>medications</strong> with your doctor periodically — some common medications can affect blood sugar and may need adjustment over time.','Stay on top of <strong>other risk factors</strong> (BP, weight, activity) — these tend to have a larger relative impact as a baseline age-related risk increases.']}),
+    HeartDiseaseorAttack: v=>({intro:`A history of heart disease or heart attack was a major factor. Diabetes and cardiovascular disease share many of the same risk pathways, so coordinated care matters here.`,tips:['Keep <strong>cardiology follow-ups</strong> on schedule — ask specifically whether your current treatment plan also addresses diabetes risk.','Ask about a <strong>cardiac rehab program</strong> if you haven\'t completed one — these combine supervised exercise with education on diet and risk factors.','Discuss <strong>cholesterol and blood pressure targets</strong> with your provider — tighter control of both often has a secondary benefit for blood sugar.','Follow any prescribed <strong>cardiac diet</strong> closely — low-sodium, low-saturated-fat eating patterns also support healthy blood sugar.']}),
+    Stroke: v=>({intro:`A history of stroke was a significant factor. Many of the recovery and prevention steps for stroke overlap directly with diabetes prevention.`,tips:['Continue <strong>neurology and rehab follow-ups</strong> — ask your care team to include diabetes risk in ongoing monitoring.','Stay consistent with <strong>blood pressure and cholesterol management</strong> — both are major shared risk factors for stroke recurrence and diabetes.','Incorporate <strong>physical therapy-approved activity</strong> as soon as you\'re able — even light, supervised movement helps metabolic health.','Watch for <strong>medication interactions</strong> — some post-stroke medications can affect blood sugar, so review with your pharmacist or doctor.']}),
+    Smoker: v=>({intro:`Smoking history was a notable factor. Quitting is one of the highest-impact changes available, with benefits to insulin sensitivity beginning within weeks of stopping.`,tips:['Talk to a provider about <strong>nicotine replacement or medication</strong> (patches, gum, prescription options) — these roughly double quit success rates.','Set a <strong>quit date</strong> within the next 2 weeks and remove smoking-related items from your home and car beforehand.','Identify your <strong>top 2–3 triggers</strong> (stress, after meals, social settings) and plan a specific alternative action for each.','Use free <strong>quitline support</strong> (many countries offer phone or text-based coaching) — combining support methods improves outcomes.','Expect some <strong>short-term appetite changes</strong> after quitting — pairing with a focus on fruits/vegetables can offset this.']}),
+    HvyAlcoholConsump: v=>({intro:`Heavy alcohol consumption was a contributing factor. Alcohol affects blood sugar both directly and through its impact on weight, sleep, and liver function.`,tips:['Set a clear <strong>weekly limit</strong> and track intake for a few weeks to build awareness of current patterns.','Avoid drinking on an <strong>empty stomach</strong> — alcohol combined with fasting can cause unpredictable blood sugar swings.','Replace some drinking occasions with <strong>alcohol-free alternatives</strong> to reduce both calorie intake and frequency.','If cutting back feels difficult, discuss it with a healthcare provider — <strong>support resources</strong> are available and effective.']}),
+    MentHlth: v=>({intro:`Poor mental health days were a contributing factor. Mental health and metabolic health are closely linked — stress hormones directly raise blood sugar.`,tips:['Consider speaking with a <strong>mental health professional</strong> — therapy and, where appropriate, medication can meaningfully reduce chronic stress load.','Build a <strong>short daily routine</strong> (e.g. 5–10 minutes of breathing exercises or a walk) — small consistent practices reduce baseline stress over time.','Protect your <strong>sleep schedule</strong> — poor sleep and poor mental health reinforce each other and both affect blood sugar.','Stay connected — <strong>social support</strong> is one of the strongest protective factors for both mental health and chronic disease management.']}),
+    PhysHlth: v=>({intro:`Poor physical health days were a contributing factor. Identifying and managing the underlying cause is the most direct way to address this.`,tips:['Bring a <strong>specific log of symptoms</strong> (what, when, how often) to your next doctor\'s visit — this speeds up diagnosis.','Ask whether <strong>pain or fatigue</strong> is limiting your activity levels, and discuss modified exercise options if so.','Review whether <strong>existing conditions</strong> are well-controlled — uncontrolled chronic conditions often show up as frequent "poor health days".','Don\'t skip <strong>preventive care</strong> (vaccinations, screenings) — these reduce the frequency of acute illness that adds to poor health days.']}),
+    DiffWalk: v=>({intro:`Difficulty walking or climbing stairs was a contributing factor. Addressing mobility, even modestly, opens up more options for activity-based risk reduction.`,tips:['Ask about a referral to <strong>physical therapy</strong> — targeted exercises can improve strength, balance, and pain over time.','Try <strong>water-based exercise</strong> (swimming, aqua aerobics) — it\'s low-impact on joints while still building cardiovascular fitness.','Use <strong>seated or chair-based exercise routines</strong> — many are specifically designed for people with mobility limitations.','Address <strong>footwear and mobility aids</strong> with a provider — sometimes simple equipment changes meaningfully reduce pain and increase activity tolerance.']}),
+    Fruits: v=>({intro:`Low fruit intake was a contributing factor. Small, consistent additions tend to stick better than major diet overhauls.`,tips:['Keep <strong>whole fruit visible and accessible</strong> (on the counter, pre-washed in the fridge) — visibility strongly predicts consumption.','Add fruit to <strong>existing meals</strong> — berries on cereal, sliced apple with lunch — rather than treating it as a separate task.','Favor <strong>whole fruit over juice</strong> — the fiber in whole fruit slows sugar absorption significantly.']}),
+    Veggies: v=>({intro:`Low vegetable intake was a contributing factor. Vegetables are one of the highest-value, lowest-risk additions you can make to your diet.`,tips:['Add a <strong>vegetable to one meal at a time</strong> — start with dinner, then expand once it\'s a habit.','Keep <strong>frozen vegetables</strong> on hand — they\'re just as nutritious as fresh and remove the prep barrier.','Try "<strong>vegetable-forward</strong>" versions of familiar meals — bulk out pasta sauces, soups, and stir-fries with extra vegetables.']}),
+  };
+  const GENERIC_TIPS = v => ({
+    intro: `This factor had a meaningful impact on your score. While it doesn't have a dedicated tip list here, the general recommendations below cover related lifestyle areas.`,
+    tips: ['Discuss this specific factor with a <strong>healthcare provider</strong> — they can help identify the most relevant next steps for your situation.','Review the related items in <strong>Suggested Next Steps</strong> below, as several factors often share common underlying causes.'],
+  });
+
+  let recommendations = Object.entries(RECS)
+    .map(([key, fn]) => inputs[key] !== undefined ? fn(inputs[key]) : null)
+    .filter(Boolean);
+  recommendations.sort((a,b) => (b.priority?1:0)-(a.priority?1:0));
+  if (recommendations.length === 0) {
+    recommendations.push({icon:'✅',priority:false,title:'Keep up the healthy habits',desc:"Your responses don't indicate major individual risk factors. Continue maintaining a balanced diet, regular activity, and routine check-ups to help keep your risk low over time.",context:null});
+  }
+
+  /* ────────────────────────────────────────────
+     PANEL 1 — OVERVIEW
+     2-col: left = factor chips + priority recs,
+             right = standard recs
+  ──────────────────────────────────────────── */
+  const priorityRecs  = recommendations.filter(r => r.priority);
+  const standardRecs  = recommendations.filter(r => !r.priority);
+
+  let overviewHTML = '';
+
+  if (factors.length) {
+    overviewHTML += `
+    <div class="section-label">Your top contributing factors</div>
+    <div class="factor-chips">
+      ${factors.map((f,i)=>`<div class="factor-chip"><span class="chip-rank">#${i+1}</span><span>${f.label}</span><span class="chip-pct">${f.contribution}%</span></div>`).join('')}
+    </div>`;
+  }
+
+  overviewHTML += `<div class="overview-grid">`;
+
+  // Left col — priority items
+  overviewHTML += `<div class="rec-col">`;
+  if (priorityRecs.length) {
+    overviewHTML += `<div class="col-label">Priority actions</div>`;
+    overviewHTML += priorityRecs.map(r => recCardHTML(r)).join('');
+  } else {
+    overviewHTML += `<div class="col-label">Priority actions</div><p style="font-size:13px;color:var(--gray-500)">No high-priority flags from your answers.</p>`;
+  }
+  overviewHTML += `</div>`;
+
+  // Right col — standard items
+  overviewHTML += `<div class="rec-col">`;
+  if (standardRecs.length) {
+    overviewHTML += `<div class="col-label">Also worth considering</div>`;
+    overviewHTML += standardRecs.map(r => recCardHTML(r)).join('');
+  }
+  overviewHTML += `</div>`;
+
+  overviewHTML += `</div>`; // end overview-grid
+
+  overviewHTML += `
+    <div class="cta-row">
+      <a href="index.html" class="btn-primary">Start a New Assessment →</a>
+      <a href="results.html" class="btn-outline">← Back to Results</a>
+    </div>
+    <div class="disclaimer">
+      <div style="font-size:18px;line-height:1;flex-shrink:0">⚠️</div>
+      <div>
+        <div class="disclaimer-title">Important Disclaimer</div>
+        <ul class="disclaimer-list">
+          <li>These suggestions are <strong>general, educational guidance</strong> — not a treatment plan.</li>
+          <li>They do <strong>not</strong> constitute medical advice, diagnosis, or treatment.</li>
+          <li>Always consult a <strong>qualified healthcare provider</strong> before making any changes.</li>
+        </ul>
+      </div>
+    </div>`;
+  document.getElementById('overview-content').innerHTML = overviewHTML;
+
+  /* ────────────────────────────────────────────
+     PANEL 2 — DEEP DIVES
+  ──────────────────────────────────────────── */
+  let deepHTML = '';
+  if (factors.length) {
+    const rankClass = ['rank-1','rank-2','rank-3'];
+    deepHTML += `<div class="section-label">How to lower your top factors</div>`;
+    deepHTML += factors.map((f,i)=>{
+      const getTips = FACTOR_TIPS[f.feature] || GENERIC_TIPS;
+      const {intro,tips} = getTips(f.value);
+      return `
+      <div class="focus-card">
+        <div class="focus-header">
+          <div class="focus-rank ${rankClass[i]||'rank-3'}">#${i+1}</div>
+          <div class="focus-heading">
+            <div class="focus-title">${f.label}</div>
+            <div class="focus-sub">${f.contribution}% of your overall score</div>
+          </div>
+          <div class="focus-pct">${f.contribution}<span class="pct-unit">%</span></div>
+        </div>
+        <div class="focus-body">
+          <p>${intro}</p>
+          <ul class="tip-list">${tips.map(t=>`<li class="tip-item"><span class="tip-bullet"></span><span>${t}</span></li>`).join('')}</ul>
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    deepHTML = `<p style="font-size:13px;color:var(--gray-500);padding:20px 0">No factor breakdown available — deep dives require SHAP contribution data from the model.</p>`;
+  }
+
+  // Hide tab if no deep dives
+  if (!factors.length) document.getElementById('tabDeep').style.display = 'none';
+  document.getElementById('deepdive-content').innerHTML = deepHTML;
+
+
+}
+
+function recCardHTML(r) {
+  return `
+  <div class="rec-card">
+    <div class="rec-icon ${r.priority?'priority':'standard'}">${r.icon}</div>
+    <div class="rec-body">
+      <div class="rec-top-row">
+        <div class="rec-title">${r.title}</div>
+        ${r.priority?'<span class="rec-flag">Priority</span>':''}
+      </div>
+      <div class="rec-desc">${r.desc}</div>
+      ${r.context?`<div class="rec-context">${r.context}</div>`:''}
+    </div>
+  </div>`;
+}
+</script>
+</body>
+</html>
