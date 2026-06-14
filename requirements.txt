@@ -1,0 +1,61 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Diabetes Risk Predictor — Python Dependencies
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Install all dependencies with:
+#   pip install -r requirements.txt
+#
+# Recommended: use a virtual environment first
+#   python -m venv .venv
+#   source .venv/bin/activate        # macOS / Linux
+#   .venv\Scripts\activate           # Windows
+#
+# Python version required: 3.10 or higher
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ── Web Framework ─────────────────────────────────────────────────────────────
+# Flask: lightweight WSGI web framework used to serve the REST API (app.py).
+# Exposes three endpoints: POST /predict, GET /health, GET /limits.
+flask>=3.0
+
+# flask-cors: adds Cross-Origin Resource Sharing (CORS) headers so the
+# standalone index.html / results.html frontend can call the Flask API
+# running on localhost:5000 without browser security blocks.
+flask-cors>=4.0
+
+
+# ── Machine Learning ──────────────────────────────────────────────────────────
+# XGBoost: gradient-boosted tree classifier used for diabetes risk prediction.
+# XGBClassifier is trained on the CDC BRFSS dataset with scale_pos_weight
+# to compensate for class imbalance between diabetic and non-diabetic samples.
+xgboost>=2.0
+
+# scikit-learn: provides StandardScaler (feature normalisation before inference),
+# train_test_split (stratified 80/20 data splitting), and evaluation metrics
+# (roc_auc_score, f1_score, confusion_matrix).
+scikit-learn>=1.4
+
+# shap: SHapley Additive exPlanations — computes feature-level contribution
+# scores that explain why the model produced a given risk score for each user.
+# Used to generate per-prediction explainability output showing which health
+# indicators pushed the risk up or down.
+shap>=0.44
+
+
+# ── Data Handling ─────────────────────────────────────────────────────────────
+# pandas: loads and preprocesses the CDC BRFSS CSV dataset, handles missing
+# value imputation, target binarisation, and builds single-row DataFrames
+# at inference time for the model to consume.
+pandas>=2.0
+
+# numpy: numerical array operations throughout the ML pipeline; also required
+# internally by XGBoost, scikit-learn, and shap.
+numpy>=1.26
+
+
+# ── Model Persistence ─────────────────────────────────────────────────────────
+# joblib: serialises the trained model bundle (XGBClassifier + StandardScaler
+# + feature list) to diabetes_risk_model.pkl on first run, and deserialises
+# it on every subsequent server start for fast cache loading.
+joblib>=1.3
